@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
@@ -47,13 +47,17 @@ import {
 
       <article class="card panel">
         <h2 class="section-title">المؤشرات الحالية</h2>
-        <app-data-table [columns]="columns" [rows]="rows()" />
+        <app-data-table [columns]="columns" [rows]="rows()" [actions]="actions" (actionClicked)="handleTableAction($event)" />
       </article>
 
       <app-dialog
         #kpiDialog
-        title="إضافة مؤشر أداء"
-        subtitle="تعريف مؤشر جديد وربطه بالقسم المناسب."
+        [title]="isEditMode() ? 'تعديل مؤشر أداء' : 'إضافة مؤشر أداء'"
+        [subtitle]="
+          isEditMode()
+            ? 'حدّث بيانات المؤشر الحالي ثم احفظ التغييرات.'
+            : 'تعريف مؤشر جديد وربطه بالقسم المناسب.'
+        "
         icon="target"
       >
         <form class="dialog-form" [formGroup]="kpiForm" (ngSubmit)="submitKpi()" novalidate>
@@ -127,7 +131,9 @@ import {
 
           <div class="dialog-actions">
             <button class="btn btn-ghost" type="button" (click)="closeKpiDialog()">إلغاء</button>
-            <button class="btn btn-primary" type="submit" [disabled]="kpiForm.invalid">حفظ المؤشر</button>
+            <button class="btn btn-primary" type="submit" [disabled]="kpiForm.invalid">
+              {{ isEditMode() ? 'حفظ التعديلات' : 'حفظ المؤشر' }}
+            </button>
           </div>
         </form>
       </app-dialog>
@@ -188,6 +194,28 @@ import {
           </div>
         </form>
       </app-dialog>
+
+      <app-dialog
+        #deleteDialog
+        title="تأكيد حذف المؤشر"
+        subtitle="سيتم حذف المؤشر ونتائجه المرتبطة نهائياً بعد التأكيد."
+        icon="alert"
+      >
+        <div class="page-grid">
+          <div class="message-box error">
+            هل أنت متأكد من حذف المؤشر
+            <strong *ngIf="deletingKpi() as kpi">{{ kpi.name }}</strong>
+            ؟ لا يمكن التراجع عن هذا الإجراء.
+          </div>
+
+          <div class="dialog-actions">
+            <button class="btn btn-ghost" type="button" (click)="closeDeleteDialog()">إلغاء</button>
+            <button class="btn btn-danger" type="button" (click)="confirmDelete()" [disabled]="loading()">
+              {{ loading() ? 'جارٍ الحذف...' : 'تأكيد الحذف' }}
+            </button>
+          </div>
+        </div>
+      </app-dialog>
     </section>
   `,
   styles: ['.panel { padding:1.5rem; }'],
@@ -200,9 +228,14 @@ export class KpiManagementComponent implements OnInit {
 
   protected readonly kpiDialog = viewChild.required<DialogComponent>('kpiDialog');
   protected readonly recordDialog = viewChild.required<DialogComponent>('recordDialog');
-  protected readonly kpis = signal<any[]>([]);
+  protected readonly deleteDialog = viewChild.required<DialogComponent>('deleteDialog');
+  protected readonly kpis = signal<Kpi[]>([]);
   protected readonly departments = signal<any[]>([]);
   protected readonly employees = signal<any[]>([]);
+  protected readonly loading = signal(false);
+  protected readonly editingKpi = signal<Kpi | null>(null);
+  protected readonly deletingKpi = signal<Kpi | null>(null);
+  protected readonly isEditMode = computed(() => !!this.editingKpi());
   protected readonly hasVisibleError = hasVisibleError;
   protected readonly getVisibleErrorMessage = getVisibleErrorMessage;
   protected readonly kpiValidationMessages = {
@@ -244,9 +277,13 @@ export class KpiManagementComponent implements OnInit {
   };
   protected readonly columns = [
     { key: 'name', label: 'المؤشر' },
-    { key: 'metricType', label: 'النوع' },
+    { key: 'metricTypeLabel', label: 'النوع' },
     { key: 'target', label: 'الهدف' },
     { key: 'department', label: 'القسم' },
+  ];
+  protected readonly actions = [
+    { key: 'edit', label: 'تعديل', icon: 'target', tone: 'ghost' as const },
+    { key: 'delete', label: 'حذف', icon: 'alert', tone: 'danger' as const },
   ];
 
   protected readonly kpiForm = this.fb.nonNullable.group({
@@ -272,11 +309,22 @@ export class KpiManagementComponent implements OnInit {
   }
 
   protected openKpiDialog() {
+    this.editingKpi.set(null);
+    this.kpiForm.reset({
+      name: '',
+      description: '',
+      metricType: 'percentage',
+      direction: 'increase',
+      targetValue: 90,
+      unit: '%',
+      departmentId: '',
+    });
     clearControlState(this.kpiForm);
     this.kpiDialog().open();
   }
 
   protected closeKpiDialog() {
+    this.editingKpi.set(null);
     this.kpiDialog().close();
   }
 
@@ -289,32 +337,77 @@ export class KpiManagementComponent implements OnInit {
     this.recordDialog().close();
   }
 
+  protected closeDeleteDialog() {
+    this.deletingKpi.set(null);
+    this.deleteDialog().close();
+  }
+
+  protected handleTableAction(event: { key: string; row: Record<string, unknown> }) {
+    if (typeof event.row['kpiId'] !== 'string') {
+      return;
+    }
+
+    const kpi = this.kpis().find((item) => (item._id || item.id) === event.row['kpiId']);
+    if (!kpi) {
+      return;
+    }
+
+    if (event.key === 'edit') {
+      this.openEditDialog(kpi);
+      return;
+    }
+
+    if (event.key === 'delete') {
+      this.openDeleteDialog(kpi);
+    }
+  }
+
+  protected openEditDialog(kpi: Kpi) {
+    this.editingKpi.set(kpi);
+    this.kpiForm.reset({
+      name: kpi.name,
+      description: kpi.description,
+      metricType: kpi.metricType,
+      direction: kpi.direction,
+      targetValue: kpi.targetValue,
+      unit: kpi.unit,
+      departmentId: typeof kpi.departmentId === 'string' ? kpi.departmentId : kpi.departmentId?._id || '',
+    });
+    clearControlState(this.kpiForm);
+    this.kpiDialog().open();
+  }
+
+  protected openDeleteDialog(kpi: Kpi) {
+    this.deletingKpi.set(kpi);
+    this.deleteDialog().open();
+  }
+
   protected submitKpi() {
-    if (this.kpiForm.invalid) {
+    if (this.kpiForm.invalid || this.loading()) {
       touchAllControls(this.kpiForm);
       return;
     }
     const payload = this.kpiForm.getRawValue();
-    this.kpisApi
-      .createKpi({
-        ...payload,
-        metricType: payload.metricType as Kpi['metricType'],
-        direction: payload.direction as Kpi['direction'],
-        departmentId: payload.departmentId || undefined,
-      })
-      .subscribe(() => {
+    const normalizedPayload = {
+      ...payload,
+      metricType: payload.metricType as Kpi['metricType'],
+      direction: payload.direction as Kpi['direction'],
+      departmentId: payload.departmentId || undefined,
+    };
+    const currentEdit = this.editingKpi();
+    const kpiId = currentEdit?._id || currentEdit?.id;
+    const request = currentEdit && kpiId
+      ? this.kpisApi.updateKpi(kpiId, normalizedPayload)
+      : this.kpisApi.createKpi(normalizedPayload);
+
+    this.loading.set(true);
+    request.subscribe({
+      next: () => {
         this.loadKpis();
-        this.kpiForm.reset({
-          name: '',
-          description: '',
-          metricType: 'percentage',
-          direction: 'increase',
-          targetValue: 90,
-          unit: '%',
-          departmentId: '',
-        });
         this.closeKpiDialog();
-      });
+      },
+      complete: () => this.loading.set(false),
+    });
   }
 
   protected submitRecord() {
@@ -336,11 +429,29 @@ export class KpiManagementComponent implements OnInit {
 
   protected rows() {
     return this.kpis().map((kpi) => ({
+      kpiId: kpi._id || kpi.id || '',
       name: kpi.name,
-      metricType: kpi.metricType,
+      metricTypeLabel: this.metricTypeLabel(kpi.metricType),
       target: `${kpi.targetValue} ${kpi.unit}`,
       department: typeof kpi.departmentId === 'string' ? kpi.departmentId : kpi.departmentId?.name || 'عام',
     }));
+  }
+
+  protected confirmDelete() {
+    const kpi = this.deletingKpi();
+    const kpiId = kpi?._id || kpi?.id;
+    if (!kpi || !kpiId || this.loading()) {
+      return;
+    }
+
+    this.loading.set(true);
+    this.kpisApi.deleteKpi(kpiId).subscribe({
+      next: () => {
+        this.closeDeleteDialog();
+        this.loadKpis();
+      },
+      complete: () => this.loading.set(false),
+    });
   }
 
   private loadData() {
@@ -351,5 +462,14 @@ export class KpiManagementComponent implements OnInit {
 
   private loadKpis() {
     this.kpisApi.getKpis().subscribe((response) => this.kpis.set(response));
+  }
+
+  private metricTypeLabel(value: Kpi['metricType']) {
+    return {
+      number: 'رقم',
+      percentage: 'نسبة',
+      score: 'درجة',
+      boolean: 'نعم/لا',
+    }[value] || value;
   }
 }

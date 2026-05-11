@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { Roles } from 'src/common/decorators/roles.decorator';
@@ -46,6 +46,12 @@ export class EnrollmentsController {
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateEnrollmentDto: UpdateEnrollmentDto) {
     return this.enrollmentsService.update(id, updateEnrollmentDto);
+  }
+
+  @Roles(UserRole.Admin, UserRole.Hr, UserRole.Manager)
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.enrollmentsService.remove(id);
   }
 
   private extractId(value: unknown) {

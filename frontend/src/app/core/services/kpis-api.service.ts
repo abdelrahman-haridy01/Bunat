@@ -20,8 +20,11 @@ export class KpisApiService {
     return this.http.patch<Kpi>(`${environment.apiBaseUrl}/kpis/${id}`, payload);
   }
 
+  deleteKpi(id: string) {
+    return this.http.delete<{ success: boolean }>(`${environment.apiBaseUrl}/kpis/${id}`);
+  }
+
   createPerformanceRecord(payload: Partial<PerformanceRecord> & { userId: string; kpiId: string }) {
     return this.http.post<PerformanceRecord>(`${environment.apiBaseUrl}/performance-records`, payload);
   }
 }
-

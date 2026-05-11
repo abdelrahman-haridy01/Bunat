@@ -11,9 +11,14 @@ export const appRoutes: Routes = [
       import('./features/auth/pages/login.component').then((m) => m.LoginComponent),
   },
   {
+    path: 'home',
+    loadComponent: () =>
+      import('./features/auth/pages/landing.component').then((m) => m.LandingComponent),
+  },
+  {
     path: '',
     pathMatch: 'full',
-    redirectTo: 'login',
+    redirectTo: 'home',
   },
   {
     path: 'employee',
@@ -145,6 +150,6 @@ export const appRoutes: Routes = [
   },
   {
     path: '**',
-    redirectTo: 'login',
+    redirectTo: 'home',
   },
 ];

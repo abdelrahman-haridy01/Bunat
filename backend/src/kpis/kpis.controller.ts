@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { UserRole } from 'src/common/enums/domain.enums';
@@ -30,5 +30,10 @@ export class KpisController {
   update(@Param('id') id: string, @Body() updateKpiDto: UpdateKpiDto) {
     return this.kpisService.update(id, updateKpiDto);
   }
-}
 
+  @Roles(UserRole.Admin, UserRole.Hr)
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.kpisService.remove(id);
+  }
+}

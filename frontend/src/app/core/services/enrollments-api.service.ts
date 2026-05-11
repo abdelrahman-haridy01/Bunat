@@ -19,5 +19,8 @@ export class EnrollmentsApiService {
   assign(payload: { userId: string; courseId: string; dueDate?: string | null }) {
     return this.http.post<Enrollment>(`${environment.apiBaseUrl}/enrollments/assign`, payload);
   }
-}
 
+  deleteEnrollment(id: string) {
+    return this.http.delete<{ success: boolean }>(`${environment.apiBaseUrl}/enrollments/${id}`);
+  }
+}

@@ -102,6 +102,16 @@ export class EnrollmentsService {
       .exec();
   }
 
+  async remove(id: string) {
+    const enrollment = await this.enrollmentModel.findById(id).exec();
+    if (!enrollment) {
+      throw new NotFoundException('التكليف غير موجود');
+    }
+
+    await this.enrollmentModel.deleteOne({ _id: enrollment._id }).exec();
+    return { success: true };
+  }
+
   updateProgress(
     id: string,
     progressPercentage: number,

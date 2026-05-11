@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { CoursesApiService } from '../../../core/services/courses-api.service';
+import { Enrollment } from '../../../core/models/domain.models';
 import { EnrollmentsApiService } from '../../../core/services/enrollments-api.service';
 import { UsersApiService } from '../../../core/services/users-api.service';
 import { DataTableComponent, DialogComponent, IconComponent } from '../../../shared/components';
@@ -41,7 +42,7 @@ import {
 
       <article class="card panel">
         <h2 class="section-title">تكليفات الفريق</h2>
-        <app-data-table [columns]="columns" [rows]="rows()" />
+        <app-data-table [columns]="columns" [rows]="rows()" [actions]="actions" (actionClicked)="handleTableAction($event)" />
       </article>
 
       <app-dialog
@@ -81,9 +82,33 @@ import {
 
           <div class="dialog-actions">
             <button class="btn btn-ghost" type="button" (click)="closeAssignDialog()">إلغاء</button>
-            <button class="btn btn-primary" type="submit" [disabled]="form.invalid">إسناد الدورة</button>
+            <button class="btn btn-primary" type="submit" [disabled]="form.invalid || loading()">
+              {{ loading() ? 'جارٍ الحفظ...' : 'إسناد الدورة' }}
+            </button>
           </div>
         </form>
+      </app-dialog>
+
+      <app-dialog
+        #deleteDialog
+        title="تأكيد حذف التكليف"
+        subtitle="سيتم حذف التكليف نهائياً بعد التأكيد."
+        icon="alert"
+      >
+        <div class="page-grid">
+          <div class="message-box error">
+            هل أنت متأكد من حذف تكليف الدورة
+            <strong *ngIf="deletingEnrollment() as enrollment">{{ enrollmentTitle(enrollment) }}</strong>
+            ؟ لا يمكن التراجع عن هذا الإجراء.
+          </div>
+
+          <div class="dialog-actions">
+            <button class="btn btn-ghost" type="button" (click)="closeDeleteDialog()">إلغاء</button>
+            <button class="btn btn-danger" type="button" (click)="confirmDelete()" [disabled]="loading()">
+              {{ loading() ? 'جارٍ الحذف...' : 'تأكيد الحذف' }}
+            </button>
+          </div>
+        </div>
       </app-dialog>
     </section>
   `,
@@ -97,9 +122,12 @@ export class AssignTrainingComponent implements OnInit {
   private readonly enrollmentsApi = inject(EnrollmentsApiService);
 
   protected readonly assignDialog = viewChild.required<DialogComponent>('assignDialog');
+  protected readonly deleteDialog = viewChild.required<DialogComponent>('deleteDialog');
   protected readonly employees = signal<any[]>([]);
   protected readonly courses = signal<any[]>([]);
-  protected readonly enrollments = signal<any[]>([]);
+  protected readonly enrollments = signal<Enrollment[]>([]);
+  protected readonly deletingEnrollment = signal<Enrollment | null>(null);
+  protected readonly loading = signal(false);
   protected readonly hasVisibleError = hasVisibleError;
   protected readonly getVisibleErrorMessage = getVisibleErrorMessage;
   protected readonly validationMessages = {
@@ -116,8 +144,11 @@ export class AssignTrainingComponent implements OnInit {
   protected readonly columns = [
     { key: 'employee', label: 'الموظف' },
     { key: 'course', label: 'الدورة' },
-    { key: 'status', label: 'الحالة' },
+    { key: 'statusLabel', label: 'الحالة' },
     { key: 'dueDate', label: 'الاستحقاق' },
+  ];
+  protected readonly actions = [
+    { key: 'delete', label: 'حذف', icon: 'alert', tone: 'danger' as const },
   ];
 
   protected readonly form = this.fb.nonNullable.group({
@@ -139,29 +170,93 @@ export class AssignTrainingComponent implements OnInit {
     this.assignDialog().close();
   }
 
+  protected closeDeleteDialog() {
+    this.deletingEnrollment.set(null);
+    this.deleteDialog().close();
+  }
+
+  protected handleTableAction(event: { key: string; row: Record<string, unknown> }) {
+    if (typeof event.row['enrollmentId'] !== 'string') {
+      return;
+    }
+
+    const enrollment = this.enrollments().find((item) => (item._id || item.id) === event.row['enrollmentId']);
+    if (!enrollment) {
+      return;
+    }
+
+    if (event.key === 'delete') {
+      this.openDeleteDialog(enrollment);
+    }
+  }
+
+  protected openDeleteDialog(enrollment: Enrollment) {
+    this.deletingEnrollment.set(enrollment);
+    this.deleteDialog().open();
+  }
+
   protected submit() {
-    if (this.form.invalid) {
+    if (this.form.invalid || this.loading()) {
       touchAllControls(this.form);
       return;
     }
-    this.enrollmentsApi.assign(this.form.getRawValue()).subscribe(() => {
-      this.loadEnrollments();
-      this.form.reset({
-        userId: '',
-        courseId: '',
-        dueDate: '',
-      });
-      this.closeAssignDialog();
+    this.loading.set(true);
+    this.enrollmentsApi.assign(this.form.getRawValue()).subscribe({
+      next: () => {
+        this.loadEnrollments();
+        this.form.reset({
+          userId: '',
+          courseId: '',
+          dueDate: '',
+        });
+        this.closeAssignDialog();
+      },
+      complete: () => this.loading.set(false),
     });
+  }
+
+  protected confirmDelete() {
+    const enrollment = this.deletingEnrollment();
+    const enrollmentId = enrollment?._id || enrollment?.id;
+    if (!enrollment || !enrollmentId || this.loading()) {
+      return;
+    }
+
+    this.loading.set(true);
+    this.enrollmentsApi.deleteEnrollment(enrollmentId).subscribe({
+      next: () => {
+        this.closeDeleteDialog();
+        this.loadEnrollments();
+      },
+      complete: () => this.loading.set(false),
+    });
+  }
+
+  protected enrollmentTitle(enrollment: Enrollment) {
+    const courseTitle =
+      typeof enrollment.courseId === 'string' ? enrollment.courseId : enrollment.courseId?.title || 'الدورة';
+    const employeeName =
+      typeof enrollment.userId === 'string' ? enrollment.userId : enrollment.userId?.fullName || 'الموظف';
+    return `${courseTitle} - ${employeeName}`;
   }
 
   protected rows() {
     return this.enrollments().map((item) => ({
+      enrollmentId: item._id || item.id || '',
       employee: typeof item.userId === 'string' ? item.userId : item.userId?.fullName || 'موظف',
       course: typeof item.courseId === 'string' ? item.courseId : item.courseId?.title || 'دورة',
-      status: item.status,
+      statusLabel: this.statusLabel(item.status),
       dueDate: item.dueDate ? new Date(item.dueDate).toLocaleDateString('ar-SA') : '-',
     }));
+  }
+
+  private statusLabel(status: Enrollment['status']) {
+    return {
+      not_started: 'لم يبدأ',
+      in_progress: 'قيد التنفيذ',
+      completed: 'مكتمل',
+      failed: 'غير مكتمل',
+    }[status] || status;
   }
 
   private loadData() {
