@@ -4,6 +4,12 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { Course, Lesson } from '../models/domain.models';
 
+type LessonMutationPayload = Partial<Lesson> & {
+  courseId: string;
+  title: string;
+  contentType: Lesson['contentType'];
+};
+
 @Injectable({ providedIn: 'root' })
 export class CoursesApiService {
   private readonly http = inject(HttpClient);
@@ -24,12 +30,24 @@ export class CoursesApiService {
     return this.http.patch<Course>(`${environment.apiBaseUrl}/courses/${id}`, payload);
   }
 
+  deleteCourse(id: string) {
+    return this.http.delete<{ success: boolean }>(`${environment.apiBaseUrl}/courses/${id}`);
+  }
+
   getLessons(courseId: string) {
     return this.http.get<Lesson[]>(`${environment.apiBaseUrl}/courses/${courseId}/lessons`);
   }
 
-  createLesson(payload: Partial<Lesson> & { courseId: string; title: string; contentType: string }) {
+  createLesson(payload: LessonMutationPayload) {
     return this.http.post<Lesson>(`${environment.apiBaseUrl}/lessons`, payload);
+  }
+
+  updateLesson(id: string, payload: LessonMutationPayload) {
+    return this.http.patch<Lesson>(`${environment.apiBaseUrl}/lessons/${id}`, payload);
+  }
+
+  deleteLesson(id: string) {
+    return this.http.delete<{ success: boolean }>(`${environment.apiBaseUrl}/lessons/${id}`);
   }
 
   completeLesson(id: string, timeSpentMinutes?: number) {

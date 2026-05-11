@@ -27,7 +27,7 @@ export class LessonsService {
   ) {}
 
   findByCourse(courseId: string) {
-    return this.lessonModel.find({ courseId }).sort({ order: 1 }).exec();
+    return this.lessonModel.find({ courseId: toObjectId(courseId) }).sort({ order: 1 }).exec();
   }
 
   create(createLessonDto: CreateLessonDto) {
@@ -49,6 +49,29 @@ export class LessonsService {
         { new: true },
       )
       .exec();
+  }
+
+  async remove(id: string) {
+    const lesson = await this.lessonModel.findById(id).exec();
+    if (!lesson) {
+      throw new NotFoundException('الدرس غير موجود');
+    }
+
+    await Promise.all([
+      this.lessonModel.deleteOne({ _id: lesson._id }).exec(),
+      this.lessonProgressModel.deleteMany({ lessonId: lesson._id }).exec(),
+      this.lessonModel
+        .updateMany(
+          {
+            courseId: lesson.courseId,
+            order: { $gt: lesson.order },
+          },
+          { $inc: { order: -1 } },
+        )
+        .exec(),
+    ]);
+
+    return { success: true };
   }
 
   async completeLesson(id: string, userId: string, completeLessonDto: CompleteLessonDto) {
@@ -139,4 +162,3 @@ export class LessonsService {
     };
   }
 }
-

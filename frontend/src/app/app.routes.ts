@@ -118,6 +118,14 @@ export const appRoutes: Routes = [
           ),
       },
       {
+        path: 'courses/:id/lessons',
+        data: { title: 'دروس الدورة', eyebrow: 'إدارة محتوى الدورة' },
+        loadComponent: () =>
+          import('./features/admin/pages/course-lessons-management.component').then(
+            (m) => m.CourseLessonsManagementComponent,
+          ),
+      },
+      {
         path: 'kpis',
         data: { title: 'إدارة مؤشرات الأداء', eyebrow: 'تعريف وقياس التحسن' },
         loadComponent: () =>
@@ -140,4 +148,3 @@ export const appRoutes: Routes = [
     redirectTo: 'login',
   },
 ];
-

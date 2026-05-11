@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { Roles } from 'src/common/decorators/roles.decorator';
@@ -33,6 +33,12 @@ export class LessonsController {
     return this.lessonsService.update(id, updateLessonDto);
   }
 
+  @Roles(UserRole.Admin, UserRole.Hr)
+  @Delete('lessons/:id')
+  remove(@Param('id') id: string) {
+    return this.lessonsService.remove(id);
+  }
+
   @Roles(UserRole.Employee, UserRole.Manager, UserRole.Admin, UserRole.Hr)
   @Post('lessons/:id/complete')
   complete(
@@ -43,4 +49,3 @@ export class LessonsController {
     return this.lessonsService.completeLesson(id, user.id, completeLessonDto);
   }
 }
-

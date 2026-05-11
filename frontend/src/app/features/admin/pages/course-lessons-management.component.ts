@@ -4,9 +4,9 @@ import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Va
 import { ActivatedRoute } from '@angular/router';
 import { finalize, forkJoin } from 'rxjs';
 
-import { DialogComponent, EmptyStateComponent, IconComponent } from '../../../shared/components';
 import { Course, Lesson } from '../../../core/models/domain.models';
 import { CoursesApiService } from '../../../core/services/courses-api.service';
+import { DialogComponent, EmptyStateComponent, IconComponent } from '../../../shared/components';
 import {
   clearControlState,
   getVisibleErrorMessage,
@@ -31,9 +31,9 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
 }
 
 @Component({
-  selector: 'app-course-details',
+  selector: 'app-course-lessons-management',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, EmptyStateComponent, DialogComponent, IconComponent],
+  imports: [CommonModule, ReactiveFormsModule, DialogComponent, EmptyStateComponent, IconComponent],
   template: `
     <section class="page-grid">
       <article class="card panel" *ngIf="course(); else loadingState">
@@ -44,7 +44,7 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
           </div>
           <div class="panel-actions">
             <span class="status-chip info">{{ difficultyLabel(course()?.difficulty || 'beginner') }}</span>
-            <button *ngIf="readOnlyLessons()" class="btn btn-secondary" type="button" (click)="openLessonDialog()">
+            <button class="btn btn-primary" type="button" (click)="openCreateLessonDialog()">
               <span class="btn-content">
                 <app-icon name="graduation" [size]="18" />
                 <span>إضافة درس</span>
@@ -53,14 +53,41 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
           </div>
         </div>
 
+        <div class="summary-strip">
+          <div class="summary-item">
+            <strong>{{ lessons().length }}</strong>
+            <span>إجمالي الدروس</span>
+          </div>
+          <div class="summary-item">
+            <strong>{{ requiredLessonsCount() }}</strong>
+            <span>دروس إلزامية</span>
+          </div>
+          <div class="summary-item">
+            <strong>{{ totalDurationMinutes() }}</strong>
+            <span>إجمالي الدقائق</span>
+          </div>
+        </div>
+
         <div class="lesson-list" *ngIf="lessons().length; else noLessons">
           <article class="lesson-card" *ngFor="let lesson of lessons()">
             <div class="lesson-card__body">
-              <strong>{{ lesson.title }}</strong>
-              <p>{{ contentTypeLabel(lesson.contentType) }} • {{ lesson.durationMinutes }} دقيقة</p>
-              <p class="lesson-card__meta" *ngIf="lesson.contentUrl">يوجد رابط أو ملف مرفوع لهذا الدرس.</p>
-              <pre class="lesson-card__content" *ngIf="lesson.contentHtml">{{ lesson.contentHtml }}</pre>
+              <div class="lesson-card__header">
+                <div>
+                  <strong>{{ lesson.order }}. {{ lesson.title }}</strong>
+                  <p>{{ contentTypeLabel(lesson.contentType) }} • {{ lesson.durationMinutes }} دقيقة</p>
+                </div>
+                <span class="status-chip" [class.success]="lesson.isRequired" [class.muted]="!lesson.isRequired">
+                  {{ lesson.isRequired ? 'إلزامي' : 'اختياري' }}
+                </span>
+              </div>
+
+              <p class="lesson-card__meta" *ngIf="lesson.contentUrl">يوجد رابط أو ملف محفوظ لهذا الدرس.</p>
+              <pre class="lesson-card__content" *ngIf="lesson.contentHtml">{{ previewText(lesson.contentHtml) }}</pre>
+              <p class="lesson-card__meta" *ngIf="!lesson.contentUrl && !lesson.contentHtml">
+                لم تتم إضافة محتوى لهذا الدرس بعد.
+              </p>
             </div>
+
             <div class="lesson-card__actions">
               <a
                 *ngIf="lesson.contentUrl"
@@ -71,14 +98,17 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
               >
                 فتح المحتوى
               </a>
-              <button
-                *ngIf="!readOnlyLessons()"
-                class="btn btn-primary"
-                type="button"
-                (click)="complete(lesson)"
-                [disabled]="loadingLessonId() === objectId(lesson)"
-              >
-                {{ loadingLessonId() === objectId(lesson) ? 'جارٍ الحفظ...' : 'إتمام الدرس' }}
+              <button class="btn btn-ghost" type="button" (click)="openEditLessonDialog(lesson)">
+                <span class="btn-content">
+                  <app-icon name="book-open" [size]="18" />
+                  <span>تعديل</span>
+                </span>
+              </button>
+              <button class="btn btn-danger" type="button" (click)="openDeleteLessonDialog(lesson)">
+                <span class="btn-content">
+                  <app-icon name="alert" [size]="18" />
+                  <span>حذف</span>
+                </span>
               </button>
             </div>
           </article>
@@ -87,23 +117,24 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
     </section>
 
     <ng-template #loadingState>
-      <app-empty-state title="جارٍ تحميل الدورة" description="يتم جلب التفاصيل الآن." />
+      <app-empty-state title="جارٍ تحميل الدورة" description="يتم جلب بيانات الدورة والدروس الآن." />
     </ng-template>
+
     <ng-template #noLessons>
       <app-empty-state
         title="لا توجد دروس في هذه الدورة"
-        [description]="
-          readOnlyLessons()
-            ? 'ابدأ بإضافة أول درس لهذه الدورة من هذه الشاشة.'
-            : 'الدورة مخصصة لك، لكن لم تتم إضافة دروس لها بعد من لوحة الإدارة.'
-        "
+        description="أضف أول درس مع المحتوى أو الملف من هذه الشاشة."
       />
     </ng-template>
 
     <app-dialog
       #lessonDialog
-      title="إضافة درس"
-      subtitle="أدخل بيانات الدرس لإضافته إلى هذه الدورة."
+      [title]="isEditMode() ? 'تعديل الدرس' : 'إضافة درس'"
+      [subtitle]="
+        isEditMode()
+          ? 'حدّث بيانات الدرس واحفظ التغييرات.'
+          : 'أدخل بيانات الدرس وأضف المحتوى أو ارفع الملف.'
+      "
       icon="graduation"
     >
       <form class="dialog-form" [formGroup]="lessonForm" (ngSubmit)="submitLesson()" novalidate>
@@ -115,6 +146,7 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
               {{ getVisibleErrorMessage(lessonForm.controls.title, lessonValidationMessages.title) }}
             </div>
           </div>
+
           <div class="field">
             <label>نوع المحتوى</label>
             <select formControlName="contentType" [class.is-invalid]="hasVisibleError(lessonForm.controls.contentType)">
@@ -128,6 +160,7 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
               {{ getVisibleErrorMessage(lessonForm.controls.contentType, lessonValidationMessages.contentType) }}
             </div>
           </div>
+
           <div class="field">
             <label>الترتيب</label>
             <input type="number" formControlName="order" [class.is-invalid]="hasVisibleError(lessonForm.controls.order)" />
@@ -135,6 +168,7 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
               {{ getVisibleErrorMessage(lessonForm.controls.order, lessonValidationMessages.order) }}
             </div>
           </div>
+
           <div class="field">
             <label>المدة</label>
             <input
@@ -146,13 +180,13 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
               {{ getVisibleErrorMessage(lessonForm.controls.durationMinutes, lessonValidationMessages.durationMinutes) }}
             </div>
           </div>
+
           <div class="field field--full">
             <label>رابط المحتوى</label>
             <input formControlName="contentUrl" placeholder="https://example.com/lesson أو سيتم تعبئته من الملف" />
-            <div class="field-help">
-              {{ lessonUrlHelpText() }}
-            </div>
+            <div class="field-help">{{ lessonUrlHelpText() }}</div>
           </div>
+
           <div class="field field--full" *ngIf="lessonUsesTextContent()">
             <label>نص المحتوى</label>
             <textarea
@@ -160,16 +194,22 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
               formControlName="contentHtml"
               placeholder="اكتب محتوى الدرس هنا أو الصق HTML بسيطاً."
             ></textarea>
-            <div class="field-help">يمكنك استخدام هذا الحقل للمقالات أو التعليمات النصية.</div>
+            <div class="field-help">للمقالات أو التعليمات النصية أو المحتوى المنسوخ.</div>
           </div>
+
           <div class="field field--full">
             <label>رفع ملف المحتوى</label>
             <input type="file" (change)="onLessonFileSelected($event)" />
             <div class="field-help" *ngIf="uploadedLessonFileName()">تم اختيار الملف: {{ uploadedLessonFileName() }}</div>
             <div class="field-help" *ngIf="!uploadedLessonFileName()">
-              يتم حفظ الملفات محلياً داخل بيانات الدرس حالياً، وليس عبر مخزن ملفات خارجي.
+              يتم حفظ الملف محلياً داخل بيانات الدرس حالياً، وليس في مخزن ملفات خارجي.
             </div>
           </div>
+
+          <label class="checkbox-field field--full">
+            <input type="checkbox" formControlName="isRequired" />
+            <span>هذا الدرس إلزامي لإكمال الدورة</span>
+          </label>
         </div>
 
         <div class="field-error" *ngIf="hasLessonContentError()">
@@ -179,16 +219,62 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
         <div class="dialog-actions">
           <button class="btn btn-ghost" type="button" (click)="closeLessonDialog()">إلغاء</button>
           <button class="btn btn-primary" type="submit" [disabled]="lessonForm.invalid || savingLesson()">
-            {{ savingLesson() ? 'جارٍ الحفظ...' : 'إضافة الدرس' }}
+            {{ savingLesson() ? 'جارٍ الحفظ...' : isEditMode() ? 'حفظ التعديلات' : 'إضافة الدرس' }}
           </button>
         </div>
       </form>
+    </app-dialog>
+
+    <app-dialog
+      #deleteDialog
+      title="تأكيد حذف الدرس"
+      subtitle="سيتم حذف الدرس نهائياً بعد التأكيد."
+      icon="alert"
+    >
+      <div class="page-grid">
+        <div class="message-box error">
+          هل أنت متأكد من حذف الدرس
+          <strong *ngIf="deletingLesson() as lesson">{{ lesson.title }}</strong>
+          ؟ لا يمكن التراجع عن هذا الإجراء.
+        </div>
+
+        <div class="dialog-actions">
+          <button class="btn btn-ghost" type="button" (click)="closeDeleteLessonDialog()">إلغاء</button>
+          <button class="btn btn-danger" type="button" (click)="confirmDeleteLesson()" [disabled]="deletingLessonInFlight()">
+            {{ deletingLessonInFlight() ? 'جارٍ الحذف...' : 'تأكيد الحذف' }}
+          </button>
+        </div>
+      </div>
     </app-dialog>
   `,
   styles: [
     `
       .panel {
         padding: 1.5rem;
+      }
+
+      .summary-strip {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+      }
+
+      .summary-item {
+        padding: 1rem;
+        border-radius: var(--radius-sm);
+        background: var(--color-neutral-50);
+        border: 1px solid var(--color-neutral-200);
+      }
+
+      .summary-item strong {
+        display: block;
+        font-size: 1.25rem;
+        color: var(--color-primary-text);
+      }
+
+      .summary-item span {
+        color: var(--color-secondary-paragraph);
       }
 
       .lesson-list {
@@ -198,7 +284,7 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
 
       .lesson-card {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
         gap: 1rem;
         padding: 1rem;
@@ -206,13 +292,21 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
         border: 1px solid var(--color-neutral-200);
       }
 
+      .lesson-card__body {
+        min-width: 0;
+        flex: 1;
+      }
+
+      .lesson-card__header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
       .lesson-card p {
         margin: 0.35rem 0 0;
         color: var(--color-secondary-paragraph);
-      }
-
-      .lesson-card__body {
-        min-width: 0;
       }
 
       .lesson-card__meta {
@@ -247,8 +341,25 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
         color: var(--color-secondary-paragraph);
       }
 
+      .checkbox-field {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        color: var(--color-primary-text);
+      }
+
+      .status-chip.muted {
+        background: var(--color-neutral-100);
+        color: var(--color-secondary-paragraph);
+      }
+
       @media (max-width: 720px) {
-        .lesson-card {
+        .summary-strip {
+          grid-template-columns: 1fr;
+        }
+
+        .lesson-card,
+        .lesson-card__header {
           flex-direction: column;
           align-items: stretch;
         }
@@ -257,18 +368,25 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CourseDetailsComponent implements OnInit {
+export class CourseLessonsManagementComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly coursesApi = inject(CoursesApiService);
 
   protected readonly lessonDialog = viewChild.required<DialogComponent>('lessonDialog');
+  protected readonly deleteDialog = viewChild.required<DialogComponent>('deleteDialog');
   protected readonly course = signal<Course | null>(null);
   protected readonly lessons = signal<Lesson[]>([]);
-  protected readonly loadingLessonId = signal('');
+  protected readonly editingLesson = signal<Lesson | null>(null);
+  protected readonly deletingLesson = signal<Lesson | null>(null);
   protected readonly savingLesson = signal(false);
+  protected readonly deletingLessonInFlight = signal(false);
   protected readonly uploadedLessonFileName = signal('');
-  protected readonly readOnlyLessons = computed(() => !!this.route.snapshot.data['readOnlyLessons']);
+  protected readonly isEditMode = computed(() => !!this.editingLesson());
+  protected readonly requiredLessonsCount = computed(() => this.lessons().filter((lesson) => lesson.isRequired).length);
+  protected readonly totalDurationMinutes = computed(() =>
+    this.lessons().reduce((total, lesson) => total + lesson.durationMinutes, 0),
+  );
   protected readonly hasVisibleError = hasVisibleError;
   protected readonly getVisibleErrorMessage = getVisibleErrorMessage;
   protected readonly lessonValidationMessages = {
@@ -287,39 +405,30 @@ export class CourseDetailsComponent implements OnInit {
       min: 'مدة الدرس يجب أن تكون دقيقة واحدة على الأقل.',
     },
   };
-  protected readonly lessonForm = this.fb.nonNullable.group({
-    title: ['', Validators.required],
-    contentType: ['article', Validators.required],
-    order: [1, [Validators.required, Validators.min(1)]],
-    durationMinutes: [10, [Validators.required, Validators.min(1)]],
-    contentUrl: [''],
-    contentHtml: [''],
-    isRequired: [true],
-  }, { validators: lessonContentValidator });
+  protected readonly lessonForm = this.fb.nonNullable.group(
+    {
+      title: ['', Validators.required],
+      contentType: ['article' as Lesson['contentType'], Validators.required],
+      order: [1, [Validators.required, Validators.min(1)]],
+      durationMinutes: [10, [Validators.required, Validators.min(1)]],
+      contentUrl: [''],
+      contentHtml: [''],
+      isRequired: [true],
+    },
+    { validators: lessonContentValidator },
+  );
 
   ngOnInit() {
-    const id = this.route.snapshot.paramMap.get('id');
-    if (!id) {
+    const courseId = this.route.snapshot.paramMap.get('id');
+    if (!courseId) {
       return;
     }
 
-    this.loadCourse(id);
+    this.loadData(courseId);
   }
 
-  protected complete(lesson: Lesson) {
-    const lessonId = this.objectId(lesson);
-    if (!lessonId) {
-      return;
-    }
-
-    this.loadingLessonId.set(lessonId);
-    this.coursesApi
-      .completeLesson(lessonId, lesson.durationMinutes)
-      .pipe(finalize(() => this.loadingLessonId.set('')))
-      .subscribe();
-  }
-
-  protected openLessonDialog() {
+  protected openCreateLessonDialog() {
+    this.editingLesson.set(null);
     this.lessonForm.reset({
       title: '',
       contentType: 'article',
@@ -334,9 +443,36 @@ export class CourseDetailsComponent implements OnInit {
     this.lessonDialog().open();
   }
 
+  protected openEditLessonDialog(lesson: Lesson) {
+    this.editingLesson.set(lesson);
+    this.lessonForm.reset({
+      title: lesson.title,
+      contentType: lesson.contentType,
+      order: lesson.order,
+      durationMinutes: lesson.durationMinutes,
+      contentUrl: lesson.contentUrl || '',
+      contentHtml: lesson.contentHtml || '',
+      isRequired: lesson.isRequired,
+    });
+    this.uploadedLessonFileName.set('');
+    clearControlState(this.lessonForm);
+    this.lessonDialog().open();
+  }
+
   protected closeLessonDialog() {
     this.uploadedLessonFileName.set('');
+    this.editingLesson.set(null);
     this.lessonDialog().close();
+  }
+
+  protected openDeleteLessonDialog(lesson: Lesson) {
+    this.deletingLesson.set(lesson);
+    this.deleteDialog().open();
+  }
+
+  protected closeDeleteLessonDialog() {
+    this.deletingLesson.set(null);
+    this.deleteDialog().close();
   }
 
   protected submitLesson() {
@@ -351,14 +487,10 @@ export class CourseDetailsComponent implements OnInit {
     }
 
     const formValue = this.lessonForm.getRawValue();
-    const payload: Partial<Lesson> & {
-      courseId: string;
-      title: string;
-      contentType: Lesson['contentType'];
-    } = {
-      title: formValue.title.trim(),
+    const payload = {
       courseId,
-      contentType: formValue.contentType as Lesson['contentType'],
+      title: formValue.title.trim(),
+      contentType: formValue.contentType,
       order: Number(formValue.order),
       durationMinutes: Number(formValue.durationMinutes),
       isRequired: formValue.isRequired,
@@ -366,14 +498,35 @@ export class CourseDetailsComponent implements OnInit {
       contentHtml: formValue.contentHtml.trim() || undefined,
     };
 
+    const editingLessonId = this.objectId(this.editingLesson() || {});
+    const request = editingLessonId
+      ? this.coursesApi.updateLesson(editingLessonId, payload)
+      : this.coursesApi.createLesson(payload);
+
     this.savingLesson.set(true);
+    request.pipe(finalize(() => this.savingLesson.set(false))).subscribe({
+      next: () => {
+        this.closeLessonDialog();
+        this.loadData(courseId);
+      },
+    });
+  }
+
+  protected confirmDeleteLesson() {
+    const courseId = this.route.snapshot.paramMap.get('id');
+    const lessonId = this.objectId(this.deletingLesson() || {});
+    if (!courseId || !lessonId || this.deletingLessonInFlight()) {
+      return;
+    }
+
+    this.deletingLessonInFlight.set(true);
     this.coursesApi
-      .createLesson(payload)
-      .pipe(finalize(() => this.savingLesson.set(false)))
+      .deleteLesson(lessonId)
+      .pipe(finalize(() => this.deletingLessonInFlight.set(false)))
       .subscribe({
         next: () => {
-          this.closeLessonDialog();
-          this.loadCourse(courseId);
+          this.closeDeleteLessonDialog();
+          this.loadData(courseId);
         },
       });
   }
@@ -440,10 +593,6 @@ export class CourseDetailsComponent implements OnInit {
     reader.readAsDataURL(file);
   }
 
-  protected objectId(item: { _id?: string; id?: string }) {
-    return item._id || item.id || '';
-  }
-
   protected contentTypeLabel(value: Lesson['contentType']) {
     return {
       video: 'فيديو',
@@ -454,7 +603,7 @@ export class CourseDetailsComponent implements OnInit {
     }[value] || value;
   }
 
-  protected difficultyLabel(value: string) {
+  protected difficultyLabel(value: Course['difficulty']) {
     return {
       beginner: 'مبتدئ',
       intermediate: 'متوسط',
@@ -462,10 +611,22 @@ export class CourseDetailsComponent implements OnInit {
     }[value] || value;
   }
 
-  private loadCourse(id: string) {
+  protected previewText(value?: string | null) {
+    if (!value) {
+      return '';
+    }
+
+    return value.length > 280 ? `${value.slice(0, 280)}...` : value;
+  }
+
+  private objectId(item: { _id?: string; id?: string }) {
+    return item._id || item.id || '';
+  }
+
+  private loadData(courseId: string) {
     forkJoin({
-      course: this.coursesApi.getCourse(id),
-      lessons: this.coursesApi.getLessons(id),
+      course: this.coursesApi.getCourse(courseId),
+      lessons: this.coursesApi.getLessons(courseId),
     }).subscribe(({ course, lessons }) => {
       this.course.set(course);
       this.lessons.set(lessons);
