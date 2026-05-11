@@ -4,6 +4,11 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
+import {
+  getVisibleErrorMessage,
+  hasVisibleError,
+  touchAllControls,
+} from '../../../shared/utils/form-validation';
 
 @Component({
   selector: 'app-login',
@@ -38,18 +43,27 @@ import { AuthService } from '../../../core/services/auth.service';
           </div>
         </div>
 
-        <form [formGroup]="form" (ngSubmit)="submit()" class="page-grid">
+        <form [formGroup]="form" (ngSubmit)="submit()" class="page-grid" novalidate>
           <div class="field">
             <label for="email">البريد الإلكتروني</label>
-            <input id="email" type="email" formControlName="email" />
+            <input id="email" type="email" formControlName="email" [class.is-invalid]="hasVisibleError(form.controls.email)" />
+            <div class="field-error" *ngIf="hasVisibleError(form.controls.email)">
+              {{ getVisibleErrorMessage(form.controls.email, validationMessages.email) }}
+            </div>
           </div>
 
           <div class="field">
             <label for="password">كلمة المرور</label>
-            <input id="password" type="password" formControlName="password" />
+            <input
+              id="password"
+              type="password"
+              formControlName="password"
+              [class.is-invalid]="hasVisibleError(form.controls.password)"
+            />
+            <div class="field-error" *ngIf="hasVisibleError(form.controls.password)">
+              {{ getVisibleErrorMessage(form.controls.password, validationMessages.password) }}
+            </div>
           </div>
-
-          <div class="message-box error" *ngIf="error()">{{ error() }}</div>
 
           <button class="btn btn-primary" type="submit" [disabled]="form.invalid || loading()">
             {{ loading() ? 'جارٍ التحقق...' : 'دخول' }}
@@ -117,7 +131,18 @@ export class LoginComponent {
   private readonly router = inject(Router);
 
   protected readonly loading = signal(false);
-  protected readonly error = signal('');
+  protected readonly hasVisibleError = hasVisibleError;
+  protected readonly getVisibleErrorMessage = getVisibleErrorMessage;
+  protected readonly validationMessages = {
+    email: {
+      required: 'أدخل البريد الإلكتروني.',
+      email: 'أدخل بريداً إلكترونياً صحيحاً.',
+    },
+    password: {
+      required: 'أدخل كلمة المرور.',
+      minlength: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل.',
+    },
+  };
 
   protected readonly form = this.fb.nonNullable.group({
     email: ['admin@bunat.local', [Validators.required, Validators.email]],
@@ -126,23 +151,19 @@ export class LoginComponent {
 
   protected submit() {
     if (this.form.invalid || this.loading()) {
+      touchAllControls(this.form);
       return;
     }
 
     this.loading.set(true);
-    this.error.set('');
 
     this.authService.login(this.form.getRawValue().email, this.form.getRawValue().password).subscribe({
       next: (session) => {
         this.authService.persistSession(session);
         this.router.navigateByUrl(this.authService.roleHome(session.user.role));
       },
-      error: () => {
-        this.error.set('تعذر تسجيل الدخول. تحقق من البريد وكلمة المرور.');
-        this.loading.set(false);
-      },
+      error: () => this.loading.set(false),
       complete: () => this.loading.set(false),
     });
   }
 }
-

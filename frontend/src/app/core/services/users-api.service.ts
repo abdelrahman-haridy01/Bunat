@@ -19,5 +19,12 @@ export class UsersApiService {
   createUser(payload: Partial<UserSummary> & { password: string }) {
     return this.http.post<UserSummary>(`${environment.apiBaseUrl}/users`, payload);
   }
-}
 
+  updateUser(id: string, payload: Partial<UserSummary> & { password?: string }) {
+    return this.http.patch<UserSummary>(`${environment.apiBaseUrl}/users/${id}`, payload);
+  }
+
+  deleteUser(id: string) {
+    return this.http.delete<{ success: boolean }>(`${environment.apiBaseUrl}/users/${id}`);
+  }
+}

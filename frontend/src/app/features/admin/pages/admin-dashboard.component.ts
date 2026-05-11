@@ -11,10 +11,10 @@ import { StatCardComponent } from '../../../shared/components';
   template: `
     <section class="page-grid" *ngIf="dashboard() as dashboard">
       <div class="stats-grid">
-        <app-stat-card label="إجمالي المستخدمين" [value]="dashboard.totals.users" />
-        <app-stat-card label="الموظفون" [value]="dashboard.totals.employees" />
-        <app-stat-card label="المديرون" [value]="dashboard.totals.managers" />
-        <app-stat-card label="معدل الإكمال" [value]="dashboard.completionRate + '%'" tone="success" />
+        <app-stat-card label="إجمالي المستخدمين" [value]="dashboard.totals.users" icon="users" />
+        <app-stat-card label="الموظفون" [value]="dashboard.totals.employees" icon="briefcase" />
+        <app-stat-card label="المديرون" [value]="dashboard.totals.managers" icon="shield" />
+        <app-stat-card label="معدل الإكمال" [value]="dashboard.completionRate + '%'" tone="success" icon="chart" />
       </div>
     </section>
   `,
@@ -29,4 +29,3 @@ export class AdminDashboardComponent implements OnInit {
     this.reportsApi.getAdminDashboard().subscribe((response) => this.dashboard.set(response));
   }
 }
-

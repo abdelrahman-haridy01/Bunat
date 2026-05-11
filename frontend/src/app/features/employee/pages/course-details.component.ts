@@ -21,8 +21,6 @@ import { CoursesApiService } from '../../../core/services/courses-api.service';
           <span class="status-chip info">{{ difficultyLabel(course()?.difficulty || 'beginner') }}</span>
         </div>
 
-        <div class="message-box success" *ngIf="successMessage()">{{ successMessage() }}</div>
-
         <div class="lesson-list" *ngIf="lessons().length; else noLessons">
           <article class="lesson-card" *ngFor="let lesson of lessons()">
             <div>
@@ -90,7 +88,6 @@ export class CourseDetailsComponent implements OnInit {
   protected readonly course = signal<Course | null>(null);
   protected readonly lessons = signal<Lesson[]>([]);
   protected readonly loadingLessonId = signal('');
-  protected readonly successMessage = signal('');
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
@@ -109,7 +106,6 @@ export class CourseDetailsComponent implements OnInit {
 
     this.loadingLessonId.set(lessonId);
     this.coursesApi.completeLesson(lessonId, lesson.durationMinutes).subscribe({
-      next: () => this.successMessage.set('تم تحديث التقدم وإضافة النقاط بنجاح.'),
       complete: () => this.loadingLessonId.set(''),
     });
   }

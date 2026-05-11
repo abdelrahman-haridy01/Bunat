@@ -74,25 +74,25 @@ export class AppShellComponent {
     const role = this.authService.currentUser()?.role;
     if (role === 'employee') {
       return [
-        { label: 'الرئيسية', link: '/employee/dashboard' },
-        { label: 'الدورات', link: '/employee/courses' },
-        { label: 'تقدمي', link: '/employee/progress' },
+        { label: 'الرئيسية', link: '/employee/dashboard', icon: 'dashboard' },
+        { label: 'الدورات', link: '/employee/courses', icon: 'book-open' },
+        { label: 'تقدمي', link: '/employee/progress', icon: 'chart' },
       ];
     }
 
     if (role === 'manager') {
       return [
-        { label: 'الرئيسية', link: '/manager/dashboard' },
-        { label: 'الفريق', link: '/manager/team' },
+        { label: 'الرئيسية', link: '/manager/dashboard', icon: 'dashboard' },
+        { label: 'الفريق', link: '/manager/team', icon: 'team' },
       ];
     }
 
     return [
-      { label: 'الرئيسية', link: '/admin/dashboard' },
-      { label: 'المستخدمون', link: '/admin/users' },
-      { label: 'الدورات', link: '/admin/courses' },
-      { label: 'المؤشرات', link: '/admin/kpis' },
-      { label: 'التكليفات', link: '/admin/assignments' },
+      { label: 'الرئيسية', link: '/admin/dashboard', icon: 'dashboard' },
+      { label: 'المستخدمون', link: '/admin/users', icon: 'users' },
+      { label: 'الدورات', link: '/admin/courses', icon: 'book-open' },
+      { label: 'المؤشرات', link: '/admin/kpis', icon: 'target' },
+      { label: 'التكليفات', link: '/admin/assignments', icon: 'calendar' },
     ];
   });
 

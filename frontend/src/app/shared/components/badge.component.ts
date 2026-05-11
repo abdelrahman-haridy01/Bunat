@@ -1,13 +1,14 @@
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { IconComponent } from './icon.component';
 
 @Component({
   selector: 'app-badge',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   template: `
     <div class="badge-pill">
-      <span class="icon">{{ icon }}</span>
+      <span class="icon"><app-icon [name]="icon" [size]="18" /></span>
       <div>
         <strong>{{ name }}</strong>
         <p *ngIf="description">{{ description }}</p>
@@ -49,8 +50,7 @@ import { CommonModule } from '@angular/common';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BadgeComponent {
-  @Input() icon = '🏅';
+  @Input() icon = 'award';
   @Input({ required: true }) name = '';
   @Input() description = '';
 }
-

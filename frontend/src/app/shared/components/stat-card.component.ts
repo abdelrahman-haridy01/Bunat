@@ -1,13 +1,19 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
+import { IconComponent } from './icon.component';
 
 @Component({
   selector: 'app-stat-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   template: `
     <article class="stat-card card" [class.success]="tone === 'success'" [class.info]="tone === 'info'">
-      <p>{{ label }}</p>
+      <div class="stat-head">
+        <span class="stat-icon" *ngIf="icon">
+          <app-icon [name]="icon" [size]="20" />
+        </span>
+        <p>{{ label }}</p>
+      </div>
       <strong>{{ value }}</strong>
       <span *ngIf="hint">{{ hint }}</span>
     </article>
@@ -18,6 +24,23 @@ import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
         display: grid;
         gap: 0.55rem;
         padding: 1.25rem;
+      }
+
+      .stat-head {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+      }
+
+      .stat-icon {
+        width: 2.35rem;
+        height: 2.35rem;
+        border-radius: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(15, 76, 129, 0.08);
+        color: var(--color-secondary-default);
       }
 
       .stat-card p,
@@ -46,5 +69,6 @@ export class StatCardComponent {
   @Input({ required: true }) label = '';
   @Input({ required: true }) value: string | number = '';
   @Input() hint = '';
+  @Input() icon = '';
   @Input() tone: 'primary' | 'success' | 'info' | 'warning' = 'primary';
 }

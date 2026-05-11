@@ -1,15 +1,18 @@
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
-import { EmptyStateComponent } from '../../../shared/components';
+import { EmptyStateComponent, IconComponent } from '../../../shared/components';
 
 @Component({
   selector: 'app-needs-support',
   standalone: true,
-  imports: [CommonModule, EmptyStateComponent],
+  imports: [CommonModule, EmptyStateComponent, IconComponent],
   template: `
     <article class="card panel">
-      <h3 class="section-title">يحتاجون دعماً</h3>
+      <h3 class="section-title label-with-icon">
+        <app-icon name="alert" [size]="18" />
+        <span>يحتاجون دعماً</span>
+      </h3>
       <div class="support-list" *ngIf="employees.length; else empty">
         <div class="support-item" *ngFor="let item of employees">
           <strong>{{ item.employee?.fullName }}</strong>
@@ -19,7 +22,11 @@ import { EmptyStateComponent } from '../../../shared/components';
     </article>
 
     <ng-template #empty>
-      <app-empty-state title="لا توجد حالات حرجة" description="جميع أعضاء الفريق في مستوى تقدم مقبول." />
+      <app-empty-state
+        icon="shield"
+        title="لا توجد حالات حرجة"
+        description="جميع أعضاء الفريق في مستوى تقدم مقبول."
+      />
     </ng-template>
   `,
   styles: [
@@ -48,4 +55,3 @@ import { EmptyStateComponent } from '../../../shared/components';
 export class NeedsSupportComponent {
   @Input() employees: any[] = [];
 }
-

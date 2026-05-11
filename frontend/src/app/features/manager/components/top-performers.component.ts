@@ -1,13 +1,17 @@
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { IconComponent } from '../../../shared/components';
 
 @Component({
   selector: 'app-top-performers',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   template: `
     <article class="card panel">
-      <h3 class="section-title">الأعلى أداءً</h3>
+      <h3 class="section-title label-with-icon">
+        <app-icon name="award" [size]="18" />
+        <span>الأعلى أداءً</span>
+      </h3>
       <div class="performer-list">
         <div class="performer" *ngFor="let item of performers">
           <strong>{{ item.employee?.fullName }}</strong>
@@ -42,4 +46,3 @@ import { CommonModule } from '@angular/common';
 export class TopPerformersComponent {
   @Input() performers: any[] = [];
 }
-

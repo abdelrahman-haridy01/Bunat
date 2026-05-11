@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import {
   BadgeComponent,
   EmptyStateComponent,
+  IconComponent,
   LevelCardComponent,
   ProgressBarComponent,
   StatCardComponent,
@@ -22,6 +23,7 @@ import { Enrollment } from '../../../core/models/domain.models';
     CommonModule,
     RouterLink,
     StatCardComponent,
+    IconComponent,
     LevelCardComponent,
     BadgeComponent,
     ProgressBarComponent,
@@ -31,15 +33,18 @@ import { Enrollment } from '../../../core/models/domain.models';
     <section class="page-grid">
       <div class="panel-header">
         <div>
-          <h2 class="section-title">ملخص تقدّمك</h2>
+          <h2 class="section-title label-with-icon">
+            <span class="icon-badge"><app-icon name="sparkles" [size]="20" /></span>
+            <span>ملخص تقدّمك</span>
+          </h2>
           <p class="section-subtitle">صورة سريعة عن التدريب الحالي، النقاط، والأثر على المؤشرات.</p>
         </div>
       </div>
 
       <div class="stats-grid">
-        <app-stat-card label="الدورات المكلفة" [value]="enrollments().length" />
-        <app-stat-card label="الدورات المكتملة" [value]="completedCount()" tone="success" />
-        <app-stat-card label="متوسط التقدّم" [value]="averageProgress() + '%'" tone="info" />
+        <app-stat-card label="الدورات المكلفة" [value]="enrollments().length" icon="book-open" />
+        <app-stat-card label="الدورات المكتملة" [value]="completedCount()" tone="success" icon="folder-check" />
+        <app-stat-card label="متوسط التقدّم" [value]="averageProgress() + '%'" tone="info" icon="chart" />
         <app-level-card
           [name]="gamification()?.user?.levelId?.name || 'مستوى جاري'"
           [points]="gamification()?.user?.pointsTotal || 0"
@@ -50,16 +55,27 @@ import { Enrollment } from '../../../core/models/domain.models';
         <article class="card panel">
           <div class="panel-header">
             <div>
-              <h3 class="section-title">الدورات الحالية</h3>
+              <h3 class="section-title label-with-icon">
+                <app-icon name="book" [size]="18" />
+                <span>الدورات الحالية</span>
+              </h3>
               <p class="section-subtitle">اعرض آخر حالة لكل دورة مخصصة.</p>
             </div>
-            <a routerLink="/employee/courses" class="btn btn-secondary">عرض الكل</a>
+            <a routerLink="/employee/courses" class="btn btn-secondary">
+              <span class="btn-content">
+                <app-icon name="eye" [size]="18" />
+                <span>عرض الكل</span>
+              </span>
+            </a>
           </div>
 
           <ng-container *ngIf="enrollments().length; else noEnrollments">
             <div class="course-list">
               <article class="course-item" *ngFor="let enrollment of enrollments().slice(0, 4)">
-                <div>
+                <div class="course-copy">
+                  <span class="course-icon">
+                    <app-icon name="graduation" [size]="18" />
+                  </span>
                   <strong>{{ courseTitle(enrollment) }}</strong>
                   <p>{{ statusLabel(enrollment.status) }}</p>
                 </div>
@@ -75,7 +91,10 @@ import { Enrollment } from '../../../core/models/domain.models';
         <article class="card panel">
           <div class="panel-header">
             <div>
-              <h3 class="section-title">الشارات والإنجاز</h3>
+              <h3 class="section-title label-with-icon">
+                <app-icon name="award" [size]="18" />
+                <span>الشارات والإنجاز</span>
+              </h3>
               <p class="section-subtitle">آخر ما تم منحه لك ضمن رحلة التطور.</p>
             </div>
           </div>
@@ -127,6 +146,22 @@ import { Enrollment } from '../../../core/models/domain.models';
         padding: 1rem;
         border-radius: 1rem;
         background: var(--color-neutral-50);
+      }
+
+      .course-copy {
+        display: grid;
+        gap: 0.35rem;
+      }
+
+      .course-icon {
+        width: 2.2rem;
+        height: 2.2rem;
+        border-radius: 0.85rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(20, 87, 58, 0.1);
+        color: var(--color-primary-default);
       }
 
       .course-item p {
@@ -198,4 +233,3 @@ export class EmployeeDashboardComponent implements OnInit {
     );
   }
 }
-

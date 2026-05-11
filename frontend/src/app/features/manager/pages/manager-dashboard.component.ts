@@ -2,20 +2,20 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { CommonModule } from '@angular/common';
 
 import { ReportsApiService } from '../../../core/services/reports-api.service';
-import { StatCardComponent } from '../../../shared/components';
+import { IconComponent, StatCardComponent } from '../../../shared/components';
 import { NeedsSupportComponent } from '../components/needs-support.component';
 import { TopPerformersComponent } from '../components/top-performers.component';
 
 @Component({
   selector: 'app-manager-dashboard',
   standalone: true,
-  imports: [CommonModule, StatCardComponent, TopPerformersComponent, NeedsSupportComponent],
+  imports: [CommonModule, IconComponent, StatCardComponent, TopPerformersComponent, NeedsSupportComponent],
   template: `
     <section class="page-grid" *ngIf="dashboard() as dashboard">
       <div class="stats-grid">
-        <app-stat-card label="عدد أعضاء الفريق" [value]="dashboard.teamMembers.length" />
-        <app-stat-card label="الأعلى أداءً" [value]="dashboard.topPerformers.length" tone="success" />
-        <app-stat-card label="بحاجة إلى دعم" [value]="dashboard.needsSupport.length" tone="info" />
+        <app-stat-card label="عدد أعضاء الفريق" [value]="dashboard.teamMembers.length" icon="team" />
+        <app-stat-card label="الأعلى أداءً" [value]="dashboard.topPerformers.length" tone="success" icon="award" />
+        <app-stat-card label="بحاجة إلى دعم" [value]="dashboard.needsSupport.length" tone="info" icon="alert" />
       </div>
 
       <div class="split-grid">
@@ -58,4 +58,3 @@ export class ManagerDashboardComponent implements OnInit {
     this.reportsApi.getManagerDashboard().subscribe((response) => this.dashboard.set(response));
   }
 }
-

@@ -97,3 +97,9 @@ export interface TableColumn {
   label: string;
 }
 
+export interface TableAction {
+  key: string;
+  label: string;
+  icon?: string;
+  tone?: 'primary' | 'secondary' | 'ghost' | 'danger';
+}

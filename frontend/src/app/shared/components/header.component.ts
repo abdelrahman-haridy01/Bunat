@@ -2,11 +2,12 @@ import { ChangeDetectionStrategy, Component, Input, inject } from '@angular/core
 import { CommonModule } from '@angular/common';
 
 import { AuthService } from '../../core/services/auth.service';
+import { IconComponent } from './icon.component';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   template: `
     <header class="header card">
       <div>
@@ -16,11 +17,21 @@ import { AuthService } from '../../core/services/auth.service';
 
       <div class="actions">
         <div class="user-box" *ngIf="authService.currentUser() as user">
-          <strong>{{ user.fullName }}</strong>
-          <span>{{ user.jobTitle }}</span>
+          <div class="user-avatar">
+            <app-icon name="user" [size]="18" />
+          </div>
+          <div>
+            <strong>{{ user.fullName }}</strong>
+            <span>{{ user.jobTitle }}</span>
+          </div>
         </div>
 
-        <button class="btn btn-secondary" type="button" (click)="authService.logout()">تسجيل الخروج</button>
+        <button class="btn btn-secondary" type="button" (click)="authService.logout()">
+          <span class="btn-content">
+            <app-icon name="logout" [size]="18" />
+            <span>تسجيل الخروج</span>
+          </span>
+        </button>
       </div>
     </header>
   `,
@@ -54,9 +65,25 @@ import { AuthService } from '../../core/services/auth.service';
       }
 
       .user-box {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        text-align: left;
+      }
+
+      .user-box > div:last-child {
         display: grid;
         gap: 0.15rem;
-        text-align: left;
+      }
+
+      .user-avatar {
+        width: 2.6rem;
+        height: 2.6rem;
+        border-radius: 0.95rem;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, rgba(20, 87, 58, 0.12), rgba(15, 76, 129, 0.14));
+        color: var(--color-secondary-default);
       }
 
       .user-box span {
@@ -84,4 +111,3 @@ export class HeaderComponent {
 
   protected readonly authService = inject(AuthService);
 }
-

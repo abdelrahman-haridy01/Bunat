@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { IconComponent } from './icon.component';
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterLink, RouterLinkActive, IconComponent],
   template: `
     <aside class="sidebar card">
       <div class="brand">
@@ -23,6 +24,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
           routerLinkActive="active"
           class="nav-link"
         >
+          <app-icon [name]="item.icon || 'dashboard'" [size]="18" />
           <span>{{ item.label }}</span>
         </a>
       </nav>
@@ -67,6 +69,9 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
       }
 
       .nav-link {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
         padding: 0.9rem 1rem;
         border-radius: 1rem;
         color: var(--color-primary-paragraph);
@@ -83,6 +88,5 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SidebarComponent {
-  @Input({ required: true }) items: Array<{ label: string; link: string }> = [];
+  @Input({ required: true }) items: Array<{ label: string; link: string; icon?: string }> = [];
 }
-
