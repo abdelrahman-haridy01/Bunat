@@ -23,6 +23,10 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
     return null;
   }
 
+  if (contentType === 'quiz') {
+    return null;
+  }
+
   if (contentType === 'video' || contentType === 'pdf') {
     return contentUrl ? null : { contentMissing: true };
   }
@@ -58,12 +62,48 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
             <div class="lesson-card__body">
               <strong>{{ lesson.title }}</strong>
               <p>{{ contentTypeLabel(lesson.contentType) }} • {{ lesson.durationMinutes }} دقيقة</p>
+              <p class="lesson-card__meta status" *ngIf="lesson.contentType === 'quiz' && lesson.progress?.quizPassed">
+                تم اجتياز الاختبار بنتيجة {{ lesson.progress?.bestQuizScorePercentage || lesson.progress?.lastQuizScorePercentage || 0 }}%
+              </p>
+              <p class="lesson-card__meta status" *ngIf="lesson.contentType === 'quiz' && !lesson.progress?.quizPassed && lesson.progress?.attemptCount">
+                آخر نتيجة: {{ lesson.progress?.lastQuizScorePercentage || 0 }}% من {{ lesson.quiz?.passingScorePercentage || 70 }}%
+              </p>
               <p class="lesson-card__meta" *ngIf="lesson.contentUrl">يوجد رابط أو ملف مرفوع لهذا الدرس.</p>
               <pre class="lesson-card__content" *ngIf="lesson.contentHtml">{{ lesson.contentHtml }}</pre>
+
+              <div class="quiz-panel" *ngIf="lesson.contentType === 'quiz' && lesson.quiz">
+                <div class="quiz-panel__summary">
+                  <span>{{ lesson.quiz.questions.length }} أسئلة</span>
+                  <span>الاجتياز من {{ lesson.quiz.passingScorePercentage }}%</span>
+                  <span *ngIf="lesson.progress?.attemptCount">المحاولات: {{ lesson.progress?.attemptCount }}</span>
+                </div>
+
+                <div class="field-error" *ngIf="quizErrors()[objectId(lesson)]">
+                  {{ quizErrors()[objectId(lesson)] }}
+                </div>
+
+                <div
+                  class="quiz-question"
+                  *ngFor="let question of lesson.quiz.questions; let questionIndex = index"
+                  [hidden]="!!lesson.progress?.quizPassed"
+                >
+                  <strong>س{{ questionIndex + 1 }}. {{ question.prompt }}</strong>
+                  <label class="quiz-option" *ngFor="let option of question.options">
+                    <input
+                      type="radio"
+                      [name]="'quiz-' + objectId(lesson) + '-' + question.id"
+                      [checked]="selectedQuizAnswer(objectId(lesson), question.id) === option.id"
+                      [disabled]="quizLocked(lesson)"
+                      (change)="selectQuizAnswer(objectId(lesson), question.id, option.id)"
+                    />
+                    <span>{{ option.text }}</span>
+                  </label>
+                </div>
+              </div>
             </div>
             <div class="lesson-card__actions">
               <a
-                *ngIf="lesson.contentUrl"
+                *ngIf="lesson.contentUrl && lesson.contentType !== 'quiz'"
                 class="btn btn-secondary"
                 [href]="lesson.contentUrl"
                 target="_blank"
@@ -72,13 +112,28 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
                 فتح المحتوى
               </a>
               <button
-                *ngIf="!readOnlyLessons()"
+                *ngIf="!readOnlyLessons() && lesson.contentType !== 'quiz'"
                 class="btn btn-primary"
                 type="button"
                 (click)="complete(lesson)"
                 [disabled]="loadingLessonId() === objectId(lesson)"
               >
                 {{ loadingLessonId() === objectId(lesson) ? 'جارٍ الحفظ...' : 'إتمام الدرس' }}
+              </button>
+              <button
+                *ngIf="!readOnlyLessons() && lesson.contentType === 'quiz'"
+                class="btn btn-primary"
+                type="button"
+                (click)="submitQuiz(lesson)"
+                [disabled]="quizLocked(lesson) || loadingLessonId() === objectId(lesson)"
+              >
+                {{
+                  lesson.progress?.quizPassed
+                    ? 'تم الاجتياز'
+                    : loadingLessonId() === objectId(lesson)
+                      ? 'جارٍ التصحيح...'
+                      : 'إرسال الاختبار'
+                }}
               </button>
             </div>
           </article>
@@ -230,6 +285,40 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
         font-family: inherit;
       }
 
+      .lesson-card__meta.status {
+        color: var(--color-success-700);
+      }
+
+      .quiz-panel {
+        margin-top: 1rem;
+        display: grid;
+        gap: 0.85rem;
+      }
+
+      .quiz-panel__summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        color: var(--color-secondary-paragraph);
+        font-size: 0.92rem;
+      }
+
+      .quiz-question {
+        display: grid;
+        gap: 0.55rem;
+        padding: 0.9rem;
+        border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-sm);
+        background: var(--color-neutral-50);
+      }
+
+      .quiz-option {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.55rem;
+        color: var(--color-primary-text);
+      }
+
       .lesson-card__actions {
         display: flex;
         align-items: center;
@@ -268,6 +357,8 @@ export class CourseDetailsComponent implements OnInit {
   protected readonly loadingLessonId = signal('');
   protected readonly savingLesson = signal(false);
   protected readonly uploadedLessonFileName = signal('');
+  protected readonly quizAnswers = signal<Record<string, Record<string, string>>>({});
+  protected readonly quizErrors = signal<Record<string, string>>({});
   protected readonly readOnlyLessons = computed(() => !!this.route.snapshot.data['readOnlyLessons']);
   protected readonly hasVisibleError = hasVisibleError;
   protected readonly getVisibleErrorMessage = getVisibleErrorMessage;
@@ -308,7 +399,8 @@ export class CourseDetailsComponent implements OnInit {
 
   protected complete(lesson: Lesson) {
     const lessonId = this.objectId(lesson);
-    if (!lessonId) {
+    const courseId = this.route.snapshot.paramMap.get('id');
+    if (!lessonId || !courseId) {
       return;
     }
 
@@ -316,7 +408,70 @@ export class CourseDetailsComponent implements OnInit {
     this.coursesApi
       .completeLesson(lessonId, lesson.durationMinutes)
       .pipe(finalize(() => this.loadingLessonId.set('')))
-      .subscribe();
+      .subscribe({
+        next: () => this.loadCourse(courseId),
+      });
+  }
+
+  protected selectQuizAnswer(lessonId: string, questionId: string, optionId: string) {
+    this.quizAnswers.update((answers) => ({
+      ...answers,
+      [lessonId]: {
+        ...(answers[lessonId] || {}),
+        [questionId]: optionId,
+      },
+    }));
+    this.quizErrors.update((errors) => ({
+      ...errors,
+      [lessonId]: '',
+    }));
+  }
+
+  protected selectedQuizAnswer(lessonId: string, questionId: string) {
+    return this.quizAnswers()[lessonId]?.[questionId] || '';
+  }
+
+  protected quizLocked(lesson: Lesson) {
+    const lessonId = this.objectId(lesson);
+    return !lessonId || !!lesson.progress?.quizPassed || this.loadingLessonId() === lessonId;
+  }
+
+  protected submitQuiz(lesson: Lesson) {
+    const lessonId = this.objectId(lesson);
+    const courseId = this.route.snapshot.paramMap.get('id');
+    if (!lessonId || !courseId || !lesson.quiz || this.quizLocked(lesson)) {
+      return;
+    }
+
+    const selectedAnswers = this.quizAnswers()[lessonId] || {};
+    const unansweredQuestion = lesson.quiz.questions.find((question) => !selectedAnswers[question.id]);
+    if (unansweredQuestion) {
+      this.quizErrors.update((errors) => ({
+        ...errors,
+        [lessonId]: 'أجب عن جميع أسئلة الاختبار قبل الإرسال.',
+      }));
+      return;
+    }
+
+    this.loadingLessonId.set(lessonId);
+    this.coursesApi
+      .submitQuizAttempt(lessonId, {
+        answers: lesson.quiz.questions.map((question) => ({
+          questionId: question.id,
+          optionId: selectedAnswers[question.id],
+        })),
+        timeSpentMinutes: lesson.durationMinutes,
+      })
+      .pipe(finalize(() => this.loadingLessonId.set('')))
+      .subscribe({
+        next: () => {
+          this.quizErrors.update((errors) => ({
+            ...errors,
+            [lessonId]: '',
+          }));
+          this.loadCourse(courseId);
+        },
+      });
   }
 
   protected openLessonDialog() {
@@ -467,8 +622,24 @@ export class CourseDetailsComponent implements OnInit {
       course: this.coursesApi.getCourse(id),
       lessons: this.coursesApi.getLessons(id),
     }).subscribe(({ course, lessons }) => {
+      this.initializeQuizAnswers(lessons);
       this.course.set(course);
       this.lessons.set(lessons);
     });
+  }
+
+  private initializeQuizAnswers(lessons: Lesson[]) {
+    const nextAnswers = { ...this.quizAnswers() };
+
+    for (const lesson of lessons) {
+      const lessonId = this.objectId(lesson);
+      if (!lessonId || lesson.contentType !== 'quiz' || !lesson.quiz || nextAnswers[lessonId]) {
+        continue;
+      }
+
+      nextAnswers[lessonId] = {};
+    }
+
+    this.quizAnswers.set(nextAnswers);
   }
 }

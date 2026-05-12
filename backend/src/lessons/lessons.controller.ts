@@ -7,6 +7,7 @@ import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { CompleteLessonDto } from './dto/complete-lesson.dto';
 import { CreateLessonDto } from './dto/create-lesson.dto';
+import { SubmitQuizAttemptDto } from './dto/submit-quiz-attempt.dto';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
 import { LessonsService } from './lessons.service';
 
@@ -17,8 +18,11 @@ export class LessonsController {
 
   @Roles(UserRole.Employee, UserRole.Manager, UserRole.Admin, UserRole.Hr)
   @Get('courses/:courseId/lessons')
-  findByCourse(@Param('courseId') courseId: string) {
-    return this.lessonsService.findByCourse(courseId);
+  findByCourse(
+    @Param('courseId') courseId: string,
+    @CurrentUser() user: { id: string; role: UserRole },
+  ) {
+    return this.lessonsService.findByCourse(courseId, user);
   }
 
   @Roles(UserRole.Admin, UserRole.Hr)
@@ -47,5 +51,15 @@ export class LessonsController {
     @CurrentUser() user: { id: string },
   ) {
     return this.lessonsService.completeLesson(id, user.id, completeLessonDto);
+  }
+
+  @Roles(UserRole.Employee, UserRole.Manager, UserRole.Admin, UserRole.Hr)
+  @Post('lessons/:id/quiz-attempt')
+  submitQuizAttempt(
+    @Param('id') id: string,
+    @Body() submitQuizAttemptDto: SubmitQuizAttemptDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.lessonsService.submitQuizAttempt(id, user.id, submitQuizAttemptDto);
   }
 }

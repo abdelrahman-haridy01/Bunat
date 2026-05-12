@@ -88,23 +88,33 @@ export class GamificationService {
 
   private async evaluatePointsBadges(userId: string, pointsTotal: number) {
     const badges = await this.badgeModel.find({ criteriaType: BadgeCriteriaType.Points }).exec();
+    const normalizedUserId = toObjectId(userId);
 
     for (const badge of badges) {
       if (pointsTotal < badge.criteriaValue) {
         continue;
       }
 
-      const existing = await this.userBadgeModel.findOne({ userId, badgeId: badge.id }).exec();
-      if (existing) {
+      const badgeId = toObjectId(badge.id);
+      const awardResult = await this.userBadgeModel.updateOne(
+        {
+          userId: normalizedUserId,
+          badgeId,
+        },
+        {
+          $setOnInsert: {
+            userId: normalizedUserId,
+            badgeId,
+            awardedAt: new Date(),
+            awardedBy: null,
+          },
+        },
+        { upsert: true },
+      );
+
+      if (!awardResult.upsertedCount) {
         continue;
       }
-
-      await this.userBadgeModel.create({
-        userId: toObjectId(userId),
-        badgeId: toObjectId(badge.id),
-        awardedAt: new Date(),
-        awardedBy: null,
-      });
 
       if (badge.pointsReward > 0) {
         await this.awardPointsInternal(

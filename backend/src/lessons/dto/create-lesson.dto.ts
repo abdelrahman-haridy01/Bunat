@@ -1,6 +1,61 @@
-import { IsBoolean, IsEnum, IsMongoId, IsNumber, IsOptional, IsString, ValidateIf } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsMongoId,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  ValidateIf,
+  ValidateNested,
+} from 'class-validator';
 
 import { LessonContentType } from 'src/common/enums/domain.enums';
+
+export class LessonQuizOptionDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsString()
+  text!: string;
+}
+
+export class LessonQuizQuestionDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsString()
+  prompt!: string;
+
+  @IsArray()
+  @ArrayMinSize(2)
+  @ValidateNested({ each: true })
+  @Type(() => LessonQuizOptionDto)
+  options!: LessonQuizOptionDto[];
+
+  @IsString()
+  correctOptionId!: string;
+}
+
+export class LessonQuizDto {
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  passingScorePercentage?: number;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => LessonQuizQuestionDto)
+  questions!: LessonQuizQuestionDto[];
+}
 
 export class CreateLessonDto {
   @IsMongoId()
@@ -22,6 +77,12 @@ export class CreateLessonDto {
   @IsString()
   contentHtml?: string | null;
 
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @ValidateNested()
+  @Type(() => LessonQuizDto)
+  quiz?: LessonQuizDto | null;
+
   @IsNumber()
   order!: number;
 
@@ -31,4 +92,3 @@ export class CreateLessonDto {
   @IsBoolean()
   isRequired!: boolean;
 }
-

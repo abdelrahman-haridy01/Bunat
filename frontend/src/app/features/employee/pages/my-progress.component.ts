@@ -52,11 +52,22 @@ import {
         <div class="panel-header">
           <div>
             <h2 class="section-title">أثر التدريب على المؤشرات</h2>
-            <p class="section-subtitle">يعرض قيم ما قبل التدريب وما بعده ونسبة التحسن.</p>
+            <p class="section-subtitle">يوضح قيم ما قبل التدريب وما بعده ونسبة التحسن.</p>
           </div>
         </div>
 
         <app-data-table [columns]="columns" [rows]="reportRows()" />
+      </article>
+
+      <article class="card panel">
+        <div class="panel-header">
+          <div>
+            <h2 class="section-title">نتائج الاختبارات</h2>
+            <p class="section-subtitle">يوضح أفضل نتيجة وحالة الاجتياز لكل اختبار أتممته.</p>
+          </div>
+        </div>
+
+        <app-data-table [columns]="quizColumns" [rows]="quizRows()" />
       </article>
     </section>
 
@@ -99,6 +110,13 @@ export class MyProgressComponent implements OnInit {
     { key: 'afterValue', label: 'بعد' },
     { key: 'improvementPercentage', label: 'التحسن %' },
   ];
+  protected readonly quizColumns = [
+    { key: 'course', label: 'الدورة' },
+    { key: 'quiz', label: 'الاختبار' },
+    { key: 'score', label: 'النتيجة' },
+    { key: 'status', label: 'الحالة' },
+    { key: 'attempts', label: 'المحاولات' },
+  ];
 
   ngOnInit() {
     const userId = this.authService.currentUser()?._id || this.authService.currentUser()?.id;
@@ -118,5 +136,14 @@ export class MyProgressComponent implements OnInit {
       improvementPercentage: `${record.improvementPercentage}%`,
     }));
   }
-}
 
+  protected quizRows() {
+    return (this.report()?.quizResults || []).map((result: any) => ({
+      course: result.courseId?.title || 'دورة تدريبية',
+      quiz: result.lessonId?.title || 'اختبار',
+      score: `${result.scorePercentage}%`,
+      status: result.passed ? 'اجتاز' : 'لم يجتز',
+      attempts: result.attemptCount,
+    }));
+  }
+}

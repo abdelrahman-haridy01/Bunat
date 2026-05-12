@@ -2,8 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-import { EnrollmentStatus, UserRole } from 'src/common/enums/domain.enums';
+import { EnrollmentStatus, LessonContentType, UserRole } from 'src/common/enums/domain.enums';
 import { Enrollment, EnrollmentDocument } from 'src/enrollments/schemas/enrollment.schema';
+import { LessonProgress, LessonProgressDocument } from 'src/lessons/schemas/lesson-progress.schema';
 import { PerformanceRecord, PerformanceRecordDocument } from 'src/performance-records/schemas/performance-record.schema';
 import { Team, TeamDocument } from 'src/teams/schemas/team.schema';
 import { User, UserDocument } from 'src/users/schemas/user.schema';
@@ -14,6 +15,8 @@ export class ReportsService {
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
     @InjectModel(Enrollment.name) private readonly enrollmentModel: Model<EnrollmentDocument>,
+    @InjectModel(LessonProgress.name)
+    private readonly lessonProgressModel: Model<LessonProgressDocument>,
     @InjectModel(PerformanceRecord.name)
     private readonly performanceRecordModel: Model<PerformanceRecordDocument>,
     @InjectModel(Team.name) private readonly teamModel: Model<TeamDocument>,
@@ -21,16 +24,34 @@ export class ReportsService {
   ) {}
 
   async getEmployeeReport(userId: string) {
-    const [user, enrollments, performanceRecords] = await Promise.all([
+    const [user, enrollments, performanceRecords, lessonProgress] = await Promise.all([
       this.userModel.findById(userId).populate('levelId').exec(),
       this.enrollmentModel.find({ userId }).populate('courseId').exec(),
       this.performanceRecordModel.find({ userId }).populate('kpiId').exec(),
+      this.lessonProgressModel
+        .find({ userId })
+        .populate('courseId lessonId')
+        .sort({ lastAttemptAt: -1, updatedAt: -1 })
+        .exec(),
     ]);
 
     return {
       user: user ? this.usersService.toSafeUser(user) : null,
       enrollments,
       performanceRecords,
+      quizResults: lessonProgress
+        .filter((progress: any) => progress.lessonId?.contentType === LessonContentType.Quiz)
+        .map((progress: any) => ({
+          courseId: progress.courseId,
+          lessonId: progress.lessonId,
+          scorePercentage: progress.bestQuizScorePercentage ?? progress.lastQuizScorePercentage ?? 0,
+          passed: !!progress.quizPassed,
+          attemptCount: progress.attemptCount ?? 0,
+          correctAnswersCount: progress.bestCorrectAnswersCount ?? 0,
+          questionCount: progress.questionCount ?? 0,
+          lastAttemptAt: progress.lastAttemptAt,
+          completedAt: progress.completedAt,
+        })),
       kpiImprovementSummary: performanceRecords.map((record) => ({
         kpiId: record.kpiId,
         improvementPercentage: record.improvementPercentage,

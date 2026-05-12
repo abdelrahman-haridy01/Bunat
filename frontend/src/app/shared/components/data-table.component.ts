@@ -42,7 +42,7 @@ import { IconComponent } from './icon.component';
         </tbody>
       </table>
       <ng-template #emptyTemplate>
-        <div class="empty-text">لا توجد سجلات لعرضها حالياً.</div>
+        <div class="empty-text">لا توجد سجلات متاحة حالياً.</div>
       </ng-template>
     </div>
   `,

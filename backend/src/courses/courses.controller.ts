@@ -22,8 +22,11 @@ export class CoursesController {
 
   @Roles(UserRole.Admin, UserRole.Hr, UserRole.Manager, UserRole.Employee)
   @Get(':id')
-  findOne(@Param('id') id: string): Promise<CourseDetailsResponse> {
-    return this.coursesService.findById(id);
+  findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string; role: UserRole },
+  ): Promise<CourseDetailsResponse> {
+    return this.coursesService.findById(id, user);
   }
 
   @Roles(UserRole.Admin, UserRole.Hr)

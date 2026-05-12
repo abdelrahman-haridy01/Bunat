@@ -22,6 +22,11 @@ import { UsersApiService } from '../../../core/services/users-api.service';
         <h2 class="section-title">سجل مؤشرات الأداء</h2>
         <app-data-table [columns]="columns" [rows]="rows()" />
       </article>
+
+      <article class="card panel">
+        <h2 class="section-title">نتائج الاختبارات</h2>
+        <app-data-table [columns]="quizColumns" [rows]="quizRows()" />
+      </article>
     </section>
   `,
   styles: [
@@ -52,6 +57,13 @@ export class EmployeePerformanceComponent implements OnInit {
     { key: 'afterValue', label: 'بعد' },
     { key: 'improvement', label: 'التحسن' },
   ];
+  protected readonly quizColumns = [
+    { key: 'course', label: 'الدورة' },
+    { key: 'quiz', label: 'الاختبار' },
+    { key: 'score', label: 'النتيجة' },
+    { key: 'status', label: 'الحالة' },
+    { key: 'attempts', label: 'المحاولات' },
+  ];
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
@@ -71,5 +83,14 @@ export class EmployeePerformanceComponent implements OnInit {
       improvement: `${record.improvementPercentage}%`,
     }));
   }
-}
 
+  protected quizRows() {
+    return (this.report()?.quizResults || []).map((result: any) => ({
+      course: result.courseId?.title || 'دورة تدريبية',
+      quiz: result.lessonId?.title || 'اختبار',
+      score: `${result.scorePercentage}%`,
+      status: result.passed ? 'اجتاز' : 'لم يجتز',
+      attempts: result.attemptCount,
+    }));
+  }
+}

@@ -2,12 +2,13 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../environments/environment';
-import { Course, Lesson } from '../models/domain.models';
+import { Course, Lesson, LessonQuiz } from '../models/domain.models';
 
 type LessonMutationPayload = Partial<Lesson> & {
   courseId: string;
   title: string;
   contentType: Lesson['contentType'];
+  quiz?: LessonQuiz | null;
 };
 
 @Injectable({ providedIn: 'root' })
@@ -52,5 +53,15 @@ export class CoursesApiService {
 
   completeLesson(id: string, timeSpentMinutes?: number) {
     return this.http.post(`${environment.apiBaseUrl}/lessons/${id}/complete`, { timeSpentMinutes });
+  }
+
+  submitQuizAttempt(
+    id: string,
+    payload: {
+      answers: Array<{ questionId: string; optionId: string }>;
+      timeSpentMinutes?: number;
+    },
+  ) {
+    return this.http.post(`${environment.apiBaseUrl}/lessons/${id}/quiz-attempt`, payload);
   }
 }

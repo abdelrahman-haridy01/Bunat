@@ -14,7 +14,7 @@ import { IconComponent } from '../../../shared/components';
       <section class="landing-hero">
         <header class="landing-topbar">
           <div class="brand-mark">
-            <span class="brand-mark__badge">ب</span>
+            <img class="brand-mark__icon" src="assets/bunat-small-logo.svg" alt="شعار بُناة" />
             <div>
               <strong>بُناة</strong>
               <p>منصة داخلية لربط التدريب بالأثر على الأداء</p>
@@ -31,28 +31,40 @@ import { IconComponent } from '../../../shared/components';
 
         <div class="hero-grid">
           <div class="hero-copy">
-            <span class="eyebrow">عرض الفكرة</span>
-            <h1>منصة تشرح للمدير كيف يتحول التدريب إلى قرار، تنفيذ، ثم أثر قابل للقياس.</h1>
+            <img class="hero-logo" src="assets/bunat-logo.svg" alt="شعار بُناة الكامل" />
+            <div class="hero-copy__meta">
+              <span class="eyebrow">الفكرة الرئيسية</span>
+              <span class="hero-copy__note">من التعلم إلى أثر يُبنى</span>
+            </div>
+            <h1>نحوّل التدريب من نشاط منفصل إلى مسار واضح ينتهي بنتيجة قابلة للقياس.</h1>
             <p class="hero-lead">
-              بُناة لا تقدم محتوى تدريبي فقط، بل تبني سلسلة واضحة تبدأ من تحديد الاحتياج،
-              مروراً بإسناد الدورات والدروس، وتنتهي بقياس التغير في مؤشرات الأداء.
+              بُناة تمنح الإدارة والمدير رؤية مباشرة تربط الاحتياج بالدورة، ثم التنفيذ بالمتابعة،
+              ثم المتابعة بالأثر على مؤشرات الأداء داخل تسلسل واحد سهل القراءة.
             </p>
 
             <div class="hero-actions">
-              <a class="btn btn-primary" href="#solution-sequence">استعرض التسلسل</a>
+              <a class="btn btn-primary" href="#solution-sequence">تصفح التسلسل</a>
               <a class="btn btn-secondary" href="#solution-goals">الأهداف التنفيذية</a>
             </div>
 
-            <div class="signal-grid">
-              <article class="signal-card" *ngFor="let item of signalCards">
-                <span class="signal-card__icon">
-                  <app-icon [name]="item.icon" [size]="18" />
-                </span>
-                <div>
-                  <strong>{{ item.title }}</strong>
-                  <p>{{ item.description }}</p>
-                </div>
-              </article>
+            <div class="hero-strip">
+              <div class="hero-strip__lead">
+                <strong>كيف يقرأ المدير المنصة؟</strong>
+                <p>ثلاث طبقات واضحة: لماذا بدأ التدريب، كيف نُفذ، وما الذي تغيّر بعده.</p>
+              </div>
+
+              <div class="signal-grid">
+                <article class="signal-card" *ngFor="let item of signalCards; let index = index">
+                  <span class="signal-card__index">0{{ index + 1 }}</span>
+                  <span class="signal-card__icon">
+                    <app-icon [name]="item.icon" [size]="18" />
+                  </span>
+                  <div>
+                    <strong>{{ item.title }}</strong>
+                    <p>{{ item.description }}</p>
+                  </div>
+                </article>
+              </div>
             </div>
           </div>
 
@@ -82,7 +94,7 @@ import { IconComponent } from '../../../shared/components';
         <div class="section-heading">
           <span class="eyebrow">الأهداف</span>
           <h2>المنصة صُممت لحل ثلاث فجوات إدارية في برامج التطوير.</h2>
-          <p>الهدف ليس أتمتة التدريب فقط، بل جعل أثره قابلاً للعرض، المتابعة، واتخاذ القرار.</p>
+          <p>الهدف ليس أتمتة التدريب فقط، بل جعل أثره قابلاً للمتابعة، التقييم، واتخاذ القرار.</p>
         </div>
 
         <div class="goals-grid">
@@ -99,7 +111,7 @@ import { IconComponent } from '../../../shared/components';
       <section id="solution-sequence" class="section-band">
         <div class="section-heading">
           <span class="eyebrow">تسلسل الحل</span>
-          <h2>هذا هو التسلسل الذي تعرضه المنصة من البداية إلى النهاية.</h2>
+          <h2>هذا هو التسلسل الذي توضحه المنصة من البداية إلى النهاية.</h2>
         </div>
 
         <div class="sequence-layout">
@@ -151,7 +163,7 @@ import { IconComponent } from '../../../shared/components';
           </div>
 
           <div class="summary-actions">
-            <button class="btn btn-primary" type="button" (click)="goToLogin()">بدء العرض عبر الدخول</button>
+            <button class="btn btn-primary" type="button" (click)="goToLogin()">الدخول إلى المنصة</button>
             <button *ngIf="isAuthenticated()" class="btn btn-secondary" type="button" (click)="goToWorkspace()">
               فتح اللوحة الحالية
             </button>
@@ -194,18 +206,10 @@ import { IconComponent } from '../../../shared/components';
         gap: 0.9rem;
       }
 
-      .brand-mark__badge {
-        width: 3rem;
-        height: 3rem;
-        border-radius: 1rem;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, #14573a, #0f4c81);
-        color: #fff;
-        font-weight: 700;
-        font-size: 1.2rem;
-        box-shadow: 0 18px 32px rgba(20, 87, 58, 0.2);
+      .brand-mark__icon {
+        width: 3.5rem;
+        height: auto;
+        flex: 0 0 auto;
       }
 
       .brand-mark strong {
@@ -246,20 +250,66 @@ import { IconComponent } from '../../../shared/components';
       }
 
       .hero-copy h1 {
-        margin: 1rem 0;
-        max-width: 11ch;
+        margin: 1rem 0 0.85rem;
+        max-width: 80%;
         color: #102432;
-        font-size: clamp(2.8rem, 5vw, 5rem);
-        line-height: 1.15;
+        font-size: clamp(2.6rem, 4.8vw, 2.75rem);
+        line-height: 1.08;
         letter-spacing: -0.03em;
       }
 
+      .hero-logo {
+        display: block;
+        width: min(100%, 28rem);
+        height: auto;
+        margin-bottom: 1rem;
+      }
+
+      .hero-copy__meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .hero-copy__note {
+        color: var(--color-secondary-default);
+        font-size: 0.92rem;
+        font-weight: 700;
+      }
+
       .hero-lead {
-        max-width: 64ch;
+        max-width: 58ch;
         margin: 0 0 1.5rem;
         color: var(--color-primary-paragraph);
-        font-size: 1.08rem;
-        line-height: 1.9;
+        font-size: 1.05rem;
+        line-height: 1.95;
+      }
+
+      .hero-strip {
+        margin-top: 1.5rem;
+        padding: 1rem;
+        border-radius: 24px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(245, 249, 253, 0.88));
+        border: 1px solid rgba(15, 76, 129, 0.1);
+        box-shadow: 0 20px 40px rgba(24, 39, 75, 0.05);
+      }
+
+      .hero-strip__lead {
+        margin-bottom: 1rem;
+      }
+
+      .hero-strip__lead strong {
+        display: block;
+        margin-bottom: 0.3rem;
+        color: var(--color-display);
+        font-size: 1rem;
+      }
+
+      .hero-strip__lead p {
+        margin: 0;
+        color: var(--color-secondary-paragraph);
+        line-height: 1.75;
       }
 
       .signal-grid,
@@ -272,7 +322,6 @@ import { IconComponent } from '../../../shared/components';
 
       .signal-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        margin-top: 1.5rem;
       }
 
       .signal-card,
@@ -287,7 +336,17 @@ import { IconComponent } from '../../../shared/components';
 
       .signal-card {
         display: grid;
-        gap: 0.7rem;
+        grid-template-columns: auto auto 1fr;
+        gap: 0.8rem;
+        align-items: start;
+      }
+
+      .signal-card__index {
+        color: rgba(16, 58, 89, 0.45);
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        padding-top: 0.1rem;
       }
 
       .signal-card__icon,
@@ -515,6 +574,14 @@ import { IconComponent } from '../../../shared/components';
         .hero-copy h1 {
           max-width: none;
         }
+
+        .hero-logo {
+          width: min(100%, 22rem);
+        }
+
+        .signal-grid {
+          grid-template-columns: 1fr;
+        }
       }
 
       @media (max-width: 720px) {
@@ -572,7 +639,7 @@ export class LandingComponent {
     },
     {
       icon: 'chart-bars',
-      title: 'أثر قابل للعرض',
+      title: 'أثر واضح للقياس',
       description: 'قراءة الفرق بين ما قبل التدريب وما بعده ضمن لوحة تنفيذية واحدة.',
     },
   ];
@@ -644,7 +711,7 @@ export class LandingComponent {
     {
       stage: 'المرحلة السادسة',
       title: 'قراءة الأثر واتخاذ قرار التحسين',
-      description: 'تعرض المنصة النتائج للإدارة لاتخاذ قرار بالاستمرار أو تعديل المحتوى أو إعادة الاستهداف.',
+      description: 'توضح المنصة النتائج للإدارة لاتخاذ قرار بالاستمرار أو تعديل المحتوى أو إعادة الاستهداف.',
     },
   ];
   protected readonly roleCards = [
@@ -663,7 +730,7 @@ export class LandingComponent {
     {
       icon: 'chart',
       title: 'الإدارة',
-      description: 'تبني المسار كاملاً وتعرض أثره على المؤسسة بلغة قرارات وليست بلغة نشاط.',
+      description: 'تبني المسار كاملاً وتوضح أثره على المؤسسة بلغة قرارات وليست بلغة نشاط.',
       points: ['إدارة المستخدمين والدورات', 'ربط التدريب بالمؤشرات', 'مراجعة النتائج والتحسين'],
     },
   ];

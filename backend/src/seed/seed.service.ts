@@ -37,11 +37,19 @@ type SeedLessonRef = {
   _id: Types.ObjectId;
   courseId: Types.ObjectId;
   durationMinutes: number;
+  contentType: LessonContentType;
+  quiz?: {
+    questions?: Array<{
+      id: string;
+      correctOptionId: string;
+    }>;
+  } | null;
 };
 
 @Injectable()
 export class SeedService {
   private readonly logger = new Logger(SeedService.name);
+  private readonly excellenceCourseTitle = 'خارطة التميز الوظيفي';
 
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
@@ -95,7 +103,7 @@ export class SeedService {
 
     const users = await this.userModel.insertMany([
       {
-        fullName: 'سارة العتيبي',
+        fullName: 'عبدالرحمن هريدي',
         email: 'admin@bunat.local',
         passwordHash,
         jobTitle: 'مدير النظام',
@@ -256,11 +264,16 @@ export class SeedService {
       { title: 'البيع الاستشاري المتقدم', description: 'منهج عملي لرفع معدل الإغلاق', skillIds: [skills[2]._id], kpiIds: [kpis[2]._id], difficulty: DifficultyLevel.Advanced, estimatedDurationMinutes: 120, status: CourseStatus.Published, createdBy: admin._id },
       { title: 'إدارة الوقت للفرق التشغيلية', description: 'أدوات تنظيم اليوم وتحسين الالتزام', skillIds: [skills[3]._id], kpiIds: [kpis[4]._id], difficulty: DifficultyLevel.Beginner, estimatedDurationMinutes: 60, status: CourseStatus.Published, createdBy: admin._id },
       { title: 'كتابة التقارير التنفيذية', description: 'تنظيم التقارير الدورية ورفع جودتها', skillIds: [skills[4]._id], kpiIds: [kpis[3]._id], difficulty: DifficultyLevel.Intermediate, estimatedDurationMinutes: 95, status: CourseStatus.Published, createdBy: admin._id },
-      { title: 'خارطة التميز الوظيفي', description: 'مسار تأسيسي يجمع المهارات الأساسية', skillIds: [skills[0]._id, skills[3]._id], kpiIds: [kpis[0]._id, kpis[4]._id], difficulty: DifficultyLevel.Intermediate, estimatedDurationMinutes: 110, status: CourseStatus.Published, createdBy: admin._id },
+      { title: this.excellenceCourseTitle, description: 'مسار تأسيسي متكامل لفهم التميز الوظيفي وبناء خطة تطوير عملية مرتبطة بالأداء والانضباط المهني.', skillIds: [skills[0]._id, skills[3]._id, skills[4]._id], kpiIds: [kpis[0]._id, kpis[4]._id, kpis[3]._id], difficulty: DifficultyLevel.Intermediate, estimatedDurationMinutes: 155, status: CourseStatus.Published, createdBy: admin._id },
     ]);
 
     const lessons: Array<Record<string, unknown>> = [];
     courses.forEach((course, courseIndex) => {
+      if (course.title === this.excellenceCourseTitle) {
+        lessons.push(...this.createExcellenceCourseLessons(course._id));
+        return;
+      }
+
       lessons.push(
         {
           courseId: course._id,
@@ -287,7 +300,32 @@ export class SeedService {
           title: `${course.title} - اختبار قصير`,
           contentType: LessonContentType.Quiz,
           contentUrl: null,
-          contentHtml: '<p>وحدة اختبار مبدئية ضمن MVP.</p>',
+          contentHtml: '<p>أجب عن الأسئلة التالية للتحقق من استيعاب المفاهيم الأساسية في هذه الدورة.</p>',
+          quiz: {
+            passingScorePercentage: 70,
+            questions: [
+              {
+                id: `${courseIndex + 1}-q1`,
+                prompt: 'ما الهدف الرئيسي من هذه الوحدة التدريبية؟',
+                options: [
+                  { id: `${courseIndex + 1}-q1-a`, text: 'زيادة المعرفة بالمفاهيم الأساسية وتطبيقها عملياً' },
+                  { id: `${courseIndex + 1}-q1-b`, text: 'مراجعة سياسات الموارد البشرية فقط' },
+                  { id: `${courseIndex + 1}-q1-c`, text: 'إلغاء الحاجة إلى مؤشرات الأداء' },
+                ],
+                correctOptionId: `${courseIndex + 1}-q1-a`,
+              },
+              {
+                id: `${courseIndex + 1}-q2`,
+                prompt: 'أي سلوك يعكس الاستفادة الصحيحة من المحتوى؟',
+                options: [
+                  { id: `${courseIndex + 1}-q2-a`, text: 'تطبيق ما تم تعلمه وقياس أثره على العمل' },
+                  { id: `${courseIndex + 1}-q2-b`, text: 'الاكتفاء بقراءة المحتوى دون تنفيذ' },
+                  { id: `${courseIndex + 1}-q2-c`, text: 'تجاهل التغذية الراجعة من المدير' },
+                ],
+                correctOptionId: `${courseIndex + 1}-q2-a`,
+              },
+            ],
+          },
           order: 3,
           durationMinutes: 10,
           isRequired: false,
@@ -339,7 +377,7 @@ export class SeedService {
 
     await this.lessonProgressModel.insertMany([
       ...this.createLessonProgresses(employees[0]._id, courses[0]._id, courseLessonsMap.get(courses[0]._id.toString()) ?? [], 2),
-      ...this.createLessonProgresses(employees[1]._id, courses[5]._id, courseLessonsMap.get(courses[5]._id.toString()) ?? [], 3),
+      ...this.createLessonProgresses(employees[1]._id, courses[5]._id, courseLessonsMap.get(courses[5]._id.toString()) ?? [], 5),
       ...this.createLessonProgresses(employees[2]._id, courses[2]._id, courseLessonsMap.get(courses[2]._id.toString()) ?? [], 1),
       ...this.createLessonProgresses(employees[3]._id, courses[1]._id, courseLessonsMap.get(courses[1]._id.toString()) ?? [], 3),
       ...this.createLessonProgresses(employees[4]._id, courses[4]._id, courseLessonsMap.get(courses[4]._id.toString()) ?? [], 2),
@@ -363,7 +401,7 @@ export class SeedService {
       { userId: employees[4]._id, sourceType: PointsSourceType.LessonCompleted, sourceId: new Types.ObjectId().toString(), points: 60, description: 'إكمال محتوى تقارير تنفيذية' },
     ]);
 
-    await this.userBadgeModel.insertMany([
+    await this.upsertUserBadges([
       { userId: employees[0]._id, badgeId: badges[0]._id, awardedAt: this.pastDate(5), awardedBy: manager._id },
       { userId: employees[1]._id, badgeId: badges[1]._id, awardedAt: this.pastDate(3), awardedBy: manager._id },
       { userId: employees[3]._id, badgeId: badges[0]._id, awardedAt: this.pastDate(4), awardedBy: manager._id },
@@ -414,13 +452,224 @@ export class SeedService {
     lessons: SeedLessonRef[],
     completedCount: number,
   ) {
-    return lessons.slice(0, completedCount).map((lesson) => ({
-      userId,
-      courseId,
-      lessonId: lesson._id,
-      status: LessonProgressStatus.Completed,
-      completedAt: this.pastDate(1),
-      timeSpentMinutes: lesson.durationMinutes,
-    }));
+    return lessons.slice(0, completedCount).map((lesson) => {
+      const correctAnswers = lesson.quiz?.questions?.map((question) => ({
+        questionId: question.id,
+        optionId: question.correctOptionId,
+      })) ?? [];
+      const questionCount = correctAnswers.length;
+
+      return {
+        userId,
+        courseId,
+        lessonId: lesson._id,
+        status: LessonProgressStatus.Completed,
+        completedAt: this.pastDate(1),
+        timeSpentMinutes: lesson.durationMinutes,
+        attemptCount: lesson.contentType === LessonContentType.Quiz ? 1 : 0,
+        lastAttemptAt: lesson.contentType === LessonContentType.Quiz ? this.pastDate(1) : null,
+        lastQuizScorePercentage: lesson.contentType === LessonContentType.Quiz ? 100 : null,
+        bestQuizScorePercentage: lesson.contentType === LessonContentType.Quiz ? 100 : null,
+        bestCorrectAnswersCount: lesson.contentType === LessonContentType.Quiz ? questionCount : null,
+        questionCount: lesson.contentType === LessonContentType.Quiz ? questionCount : null,
+        quizPassed: lesson.contentType === LessonContentType.Quiz,
+        submittedAnswers: lesson.contentType === LessonContentType.Quiz ? correctAnswers : [],
+      };
+    });
+  }
+
+  private async upsertUserBadges(
+    entries: Array<{
+      userId: Types.ObjectId;
+      badgeId: Types.ObjectId;
+      awardedAt: Date;
+      awardedBy: Types.ObjectId | null;
+    }>,
+  ) {
+    const dedupedEntries = Array.from(
+      new Map(
+        entries.map((entry) => [`${entry.userId.toString()}-${entry.badgeId.toString()}`, entry] as const),
+      ).values(),
+    );
+
+    if (!dedupedEntries.length) {
+      return;
+    }
+
+    await this.userBadgeModel.bulkWrite(
+      dedupedEntries.map((entry) => ({
+        updateOne: {
+          filter: {
+            userId: entry.userId,
+            badgeId: entry.badgeId,
+          },
+          update: {
+            $set: {
+              awardedAt: entry.awardedAt,
+              awardedBy: entry.awardedBy,
+            },
+            $setOnInsert: {
+              userId: entry.userId,
+              badgeId: entry.badgeId,
+            },
+          },
+          upsert: true,
+        },
+      })),
+    );
+  }
+
+  private createExcellenceCourseLessons(courseId: Types.ObjectId) {
+    return [
+      {
+        courseId,
+        title: 'خارطة التميز الوظيفي - لماذا نبدأ بالتميز؟',
+        contentType: LessonContentType.Video,
+        contentUrl: 'https://example.com/excellence-roadmap-intro',
+        contentHtml: null,
+        order: 1,
+        durationMinutes: 18,
+        isRequired: true,
+      },
+      {
+        courseId,
+        title: 'خارطة التميز الوظيفي - أبعاد التميز الوظيفي',
+        contentType: LessonContentType.Article,
+        contentUrl: null,
+        contentHtml:
+          '<h3>الأبعاد الأساسية</h3><p>يرتكز التميز الوظيفي على وضوح الدور، جودة التنفيذ، المبادرة، الانضباط، والتطوير المستمر. يفهم الموظف المتميز أثر عمله على مؤشرات الأداء وعلى تجربة المستفيد الداخلي والخارجي.</p><p>يبدأ التميز من الربط بين الواجبات اليومية والنتائج القابلة للقياس، ثم الانتقال إلى تحسين الأسلوب، ثم بناء عادة المراجعة الذاتية والتغذية الراجعة.</p>',
+        order: 2,
+        durationMinutes: 22,
+        isRequired: true,
+      },
+      {
+        courseId,
+        title: 'خارطة التميز الوظيفي - اختبار فهم المفاهيم',
+        contentType: LessonContentType.Quiz,
+        contentUrl: null,
+        contentHtml: '<p>أجب عن الأسئلة التالية للتحقق من فهمك لمفهوم التميز الوظيفي وأبعاده الأساسية.</p>',
+        quiz: {
+          passingScorePercentage: 75,
+          questions: [
+            {
+              id: 'excellence-map-quiz-1-q1',
+              prompt: 'أي عبارة تعبّر بشكل أدق عن التميز الوظيفي؟',
+              options: [
+                { id: 'excellence-map-quiz-1-q1-a', text: 'تنفيذ المهام اليومية بجودة ثابتة مع السعي للتحسين المستمر' },
+                { id: 'excellence-map-quiz-1-q1-b', text: 'التركيز على سرعة الإنجاز حتى لو انخفضت الجودة' },
+                { id: 'excellence-map-quiz-1-q1-c', text: 'الالتزام بالحد الأدنى من المتطلبات فقط' },
+                { id: 'excellence-map-quiz-1-q1-d', text: 'الاعتماد الكامل على المدير لاتخاذ كل قرار' },
+              ],
+              correctOptionId: 'excellence-map-quiz-1-q1-a',
+            },
+            {
+              id: 'excellence-map-quiz-1-q2',
+              prompt: 'ما الخطوة الأولى لبناء خارطة تميز شخصية؟',
+              options: [
+                { id: 'excellence-map-quiz-1-q2-a', text: 'تحديد فجوات الأداء الحالية وربطها بدورك الوظيفي' },
+                { id: 'excellence-map-quiz-1-q2-b', text: 'مقارنة نفسك بجميع الزملاء دون بيانات' },
+                { id: 'excellence-map-quiz-1-q2-c', text: 'تأجيل التطوير حتى نهاية العام' },
+                { id: 'excellence-map-quiz-1-q2-d', text: 'إلغاء الأولويات الحالية' },
+              ],
+              correctOptionId: 'excellence-map-quiz-1-q2-a',
+            },
+            {
+              id: 'excellence-map-quiz-1-q3',
+              prompt: 'أي مؤشر يدل على أن الممارسة المهنية مرتبطة بالأثر؟',
+              options: [
+                { id: 'excellence-map-quiz-1-q3-a', text: 'وجود تحسن ملموس في مؤشرات الأداء المرتبطة بالدور' },
+                { id: 'excellence-map-quiz-1-q3-b', text: 'زيادة الاجتماعات فقط' },
+                { id: 'excellence-map-quiz-1-q3-c', text: 'كتابة تقارير دون متابعة تنفيذ' },
+                { id: 'excellence-map-quiz-1-q3-d', text: 'الاعتماد على الانطباعات العامة وحدها' },
+              ],
+              correctOptionId: 'excellence-map-quiz-1-q3-a',
+            },
+          ],
+        },
+        order: 3,
+        durationMinutes: 12,
+        isRequired: true,
+      },
+      {
+        courseId,
+        title: 'خارطة التميز الوظيفي - خطة التحسين الشخصية',
+        contentType: LessonContentType.Task,
+        contentUrl: null,
+        contentHtml:
+          '<h3>مهمة تطبيقية</h3><p>اكتب ثلاث أولويات تطوير مهنية للأربعين يوماً القادمة. لكل أولوية: حدّد السلوك المطلوب، المقياس الذي سيتأثر، والخطوة العملية التي ستبدأ بها هذا الأسبوع.</p><ul><li>أولوية مرتبطة بجودة التنفيذ</li><li>أولوية مرتبطة بالالتزام والانضباط</li><li>أولوية مرتبطة بالتطوير الذاتي أو التعلم</li></ul>',
+        order: 4,
+        durationMinutes: 28,
+        isRequired: true,
+      },
+      {
+        courseId,
+        title: 'خارطة التميز الوظيفي - الاختبار الختامي',
+        contentType: LessonContentType.Quiz,
+        contentUrl: null,
+        contentHtml: '<p>اختبار ختامي لقياس جاهزيتك لبناء خارطة تميز وظيفي قابلة للتنفيذ والقياس.</p>',
+        quiz: {
+          passingScorePercentage: 80,
+          questions: [
+            {
+              id: 'excellence-map-final-q1',
+              prompt: 'ما أفضل طريقة لتحويل التميز من مفهوم إلى ممارسة يومية؟',
+              options: [
+                { id: 'excellence-map-final-q1-a', text: 'تحديد سلوكيات واضحة وربطها بقياسات ومراجعة دورية' },
+                { id: 'excellence-map-final-q1-b', text: 'الاعتماد على الحماس المؤقت فقط' },
+                { id: 'excellence-map-final-q1-c', text: 'إضافة مهام كثيرة دون ترتيب أولويات' },
+                { id: 'excellence-map-final-q1-d', text: 'الاكتفاء بالمعرفة النظرية' },
+              ],
+              correctOptionId: 'excellence-map-final-q1-a',
+            },
+            {
+              id: 'excellence-map-final-q2',
+              prompt: 'عند انخفاض الالتزام بالمواعيد، ما الإجراء الأكثر مهنية؟',
+              options: [
+                { id: 'excellence-map-final-q2-a', text: 'تحليل أسباب التأخر ووضع آلية متابعة أسبوعية' },
+                { id: 'excellence-map-final-q2-b', text: 'تجاهل المشكلة لأنها مؤقتة' },
+                { id: 'excellence-map-final-q2-c', text: 'تحميل الفريق المسؤولية بالكامل' },
+                { id: 'excellence-map-final-q2-d', text: 'إلغاء أي هدف زمني' },
+              ],
+              correctOptionId: 'excellence-map-final-q2-a',
+            },
+            {
+              id: 'excellence-map-final-q3',
+              prompt: 'أي عنصر يجب أن يظهر في خطة التميز الشخصية؟',
+              options: [
+                { id: 'excellence-map-final-q3-a', text: 'هدف تطويري، سلوك تنفيذي، ومؤشر قياس واضح' },
+                { id: 'excellence-map-final-q3-b', text: 'وصف عام دون مواعيد أو متابعة' },
+                { id: 'excellence-map-final-q3-c', text: 'قائمة مهام غير مرتبطة بالدور' },
+                { id: 'excellence-map-final-q3-d', text: 'خطة تعتمد على شخص واحد فقط لتنفيذها' },
+              ],
+              correctOptionId: 'excellence-map-final-q3-a',
+            },
+            {
+              id: 'excellence-map-final-q4',
+              prompt: 'ما فائدة التغذية الراجعة ضمن خارطة التميز؟',
+              options: [
+                { id: 'excellence-map-final-q4-a', text: 'تساعد على تصحيح المسار وتحسين جودة التنفيذ مبكراً' },
+                { id: 'excellence-map-final-q4-b', text: 'تؤخر اتخاذ القرار' },
+                { id: 'excellence-map-final-q4-c', text: 'تغني عن مؤشرات الأداء' },
+                { id: 'excellence-map-final-q4-d', text: 'تستخدم فقط عند حدوث مشكلة كبيرة' },
+              ],
+              correctOptionId: 'excellence-map-final-q4-a',
+            },
+          ],
+        },
+        order: 5,
+        durationMinutes: 15,
+        isRequired: true,
+      },
+      {
+        courseId,
+        title: 'خارطة التميز الوظيفي - مرجع التتبع العملي',
+        contentType: LessonContentType.Pdf,
+        contentUrl: 'https://example.com/excellence-roadmap-guide.pdf',
+        contentHtml: null,
+        order: 6,
+        durationMinutes: 10,
+        isRequired: false,
+      },
+    ];
   }
 }

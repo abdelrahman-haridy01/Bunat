@@ -59,12 +59,12 @@ import { Enrollment } from '../../../core/models/domain.models';
                 <app-icon name="book" [size]="18" />
                 <span>الدورات الحالية</span>
               </h3>
-              <p class="section-subtitle">اعرض آخر حالة لكل دورة مخصصة.</p>
+              <p class="section-subtitle">اطلع على آخر حالة لكل دورة مخصصة.</p>
             </div>
             <a routerLink="/employee/courses" class="btn btn-secondary">
               <span class="btn-content">
                 <app-icon name="eye" [size]="18" />
-                <span>عرض الكل</span>
+                <span>كل الدورات</span>
               </span>
             </a>
           </div>

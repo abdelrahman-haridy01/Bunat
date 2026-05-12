@@ -2,15 +2,20 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 
+import { UserRole } from 'src/common/enums/domain.enums';
 import { toObjectId } from 'src/common/utils/object-id.util';
-import { Lesson } from 'src/lessons/schemas/lesson.schema';
 import { LessonsService } from 'src/lessons/lessons.service';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { Course, CourseDocument } from './schemas/course.schema';
 
 export type CourseDetailsResponse = Record<string, unknown> & {
-  lessons: Lesson[];
+  lessons: unknown[];
+};
+
+type CurrentUser = {
+  id: string;
+  role: UserRole;
 };
 
 @Injectable()
@@ -28,7 +33,7 @@ export class CoursesService {
       .exec();
   }
 
-  async findById(id: string): Promise<CourseDetailsResponse> {
+  async findById(id: string, currentUser?: CurrentUser): Promise<CourseDetailsResponse> {
     const course = await this.courseModel
       .findById(id)
       .populate('skillIds kpiIds createdBy')
@@ -39,7 +44,7 @@ export class CoursesService {
       throw new NotFoundException('الدورة غير موجودة');
     }
 
-    const lessons = await this.lessonsService.findByCourse(id);
+    const lessons = await this.lessonsService.findByCourse(id, currentUser);
     return {
       ...(course as Record<string, unknown>),
       lessons,

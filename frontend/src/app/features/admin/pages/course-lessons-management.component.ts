@@ -4,7 +4,7 @@ import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Va
 import { ActivatedRoute } from '@angular/router';
 import { finalize, forkJoin } from 'rxjs';
 
-import { Course, Lesson } from '../../../core/models/domain.models';
+import { Course, Lesson, LessonQuiz } from '../../../core/models/domain.models';
 import { CoursesApiService } from '../../../core/services/courses-api.service';
 import { DialogComponent, EmptyStateComponent, IconComponent } from '../../../shared/components';
 import {
@@ -23,12 +23,28 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
     return null;
   }
 
+  if (contentType === 'quiz') {
+    return null;
+  }
+
   if (contentType === 'video' || contentType === 'pdf') {
     return contentUrl ? null : { contentMissing: true };
   }
 
   return contentUrl || contentHtml ? null : { contentMissing: true };
 }
+
+type EditableQuizOption = {
+  id: string;
+  text: string;
+};
+
+type EditableQuizQuestion = {
+  id: string;
+  prompt: string;
+  options: EditableQuizOption[];
+  correctOptionId: string;
+};
 
 @Component({
   selector: 'app-course-lessons-management',
@@ -81,9 +97,12 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
                 </span>
               </div>
 
+              <p class="lesson-card__meta" *ngIf="lesson.contentType === 'quiz'">
+                {{ quizSummaryLabel(lesson) }}
+              </p>
               <p class="lesson-card__meta" *ngIf="lesson.contentUrl">يوجد رابط أو ملف محفوظ لهذا الدرس.</p>
               <pre class="lesson-card__content" *ngIf="lesson.contentHtml">{{ previewText(lesson.contentHtml) }}</pre>
-              <p class="lesson-card__meta" *ngIf="!lesson.contentUrl && !lesson.contentHtml">
+              <p class="lesson-card__meta" *ngIf="!lesson.contentUrl && !lesson.contentHtml && lesson.contentType !== 'quiz'">
                 لم تتم إضافة محتوى لهذا الدرس بعد.
               </p>
             </div>
@@ -133,7 +152,7 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
       [subtitle]="
         isEditMode()
           ? 'حدّث بيانات الدرس واحفظ التغييرات.'
-          : 'أدخل بيانات الدرس وأضف المحتوى أو ارفع الملف.'
+          : 'أدخل بيانات الدرس وأضف المحتوى أو أنشئ اختباراً متعدد الخيارات.'
       "
       icon="graduation"
     >
@@ -181,7 +200,7 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
             </div>
           </div>
 
-          <div class="field field--full">
+          <div class="field field--full" *ngIf="supportsLessonUrl()">
             <label>رابط المحتوى</label>
             <input formControlName="contentUrl" placeholder="https://example.com/lesson أو سيتم تعبئته من الملف" />
             <div class="field-help">{{ lessonUrlHelpText() }}</div>
@@ -192,17 +211,89 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
             <textarea
               rows="8"
               formControlName="contentHtml"
-              placeholder="اكتب محتوى الدرس هنا أو الصق HTML بسيطاً."
+              [placeholder]="
+                isQuizContentType()
+                  ? 'أضف تعليمات قصيرة للاختبار إن لزم.'
+                  : 'اكتب محتوى الدرس هنا أو الصق HTML بسيطاً.'
+              "
             ></textarea>
-            <div class="field-help">للمقالات أو التعليمات النصية أو المحتوى المنسوخ.</div>
+            <div class="field-help">
+              {{ isQuizContentType() ? 'اختياري لإضافة مقدمة قصيرة قبل أسئلة الاختبار.' : 'للمقالات أو التعليمات النصية أو المحتوى المنسوخ.' }}
+            </div>
           </div>
 
-          <div class="field field--full">
+          <div class="field field--full" *ngIf="supportsLessonUrl()">
             <label>رفع ملف المحتوى</label>
             <input type="file" (change)="onLessonFileSelected($event)" />
             <div class="field-help" *ngIf="uploadedLessonFileName()">تم اختيار الملف: {{ uploadedLessonFileName() }}</div>
             <div class="field-help" *ngIf="!uploadedLessonFileName()">
               يتم حفظ الملف محلياً داخل بيانات الدرس حالياً، وليس في مخزن ملفات خارجي.
+            </div>
+          </div>
+
+          <div class="field field--full" *ngIf="isQuizContentType()">
+            <label>درجة الاجتياز %</label>
+            <input type="number" [value]="quizPassingScore()" min="0" max="100" (input)="updateQuizPassingScore($event)" />
+            <div class="field-help">سيُعتبر الموظف ناجحاً عندما يصل إلى هذه النسبة أو يتجاوزها.</div>
+          </div>
+
+          <div class="field field--full" *ngIf="isQuizContentType()">
+            <div class="quiz-builder">
+              <div class="quiz-builder__header">
+                <div>
+                  <strong>أسئلة الاختبار</strong>
+                  <p class="field-help">أنشئ أسئلة اختيار من متعدد وحدد إجابة صحيحة واحدة لكل سؤال.</p>
+                </div>
+                <button class="btn btn-secondary" type="button" (click)="addQuizQuestion()">
+                  <span class="btn-content">
+                    <app-icon name="graduation" [size]="18" />
+                    <span>إضافة سؤال</span>
+                  </span>
+                </button>
+              </div>
+
+              <div class="quiz-question" *ngFor="let question of quizQuestions(); let questionIndex = index">
+                <div class="quiz-question__header">
+                  <strong>السؤال {{ questionIndex + 1 }}</strong>
+                  <button class="btn btn-ghost" type="button" (click)="removeQuizQuestion(questionIndex)">
+                    حذف السؤال
+                  </button>
+                </div>
+
+                <div class="field">
+                  <label>نص السؤال</label>
+                  <input [value]="question.prompt" (input)="updateQuizQuestionPrompt(questionIndex, $event)" />
+                </div>
+
+                <div class="quiz-option" *ngFor="let option of question.options; let optionIndex = index">
+                  <input
+                    [value]="option.text"
+                    (input)="updateQuizOptionText(questionIndex, optionIndex, $event)"
+                    [placeholder]="'الخيار ' + (optionIndex + 1)"
+                  />
+                  <label class="quiz-option__correct">
+                    <input
+                      type="radio"
+                      [name]="'correct-' + question.id"
+                      [checked]="question.correctOptionId === option.id"
+                      (change)="setCorrectQuizOption(questionIndex, option.id)"
+                    />
+                    <span>الإجابة الصحيحة</span>
+                  </label>
+                  <button
+                    *ngIf="question.options.length > 2"
+                    class="btn btn-ghost"
+                    type="button"
+                    (click)="removeQuizOption(questionIndex, optionIndex)"
+                  >
+                    حذف
+                  </button>
+                </div>
+
+                <button class="btn btn-ghost" type="button" (click)="addQuizOption(questionIndex)">
+                  إضافة خيار
+                </button>
+              </div>
             </div>
           </div>
 
@@ -214,6 +305,9 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
 
         <div class="field-error" *ngIf="hasLessonContentError()">
           {{ lessonContentErrorMessage() }}
+        </div>
+        <div class="field-error" *ngIf="quizValidationError()">
+          {{ quizValidationError() }}
         </div>
 
         <div class="dialog-actions">
@@ -348,6 +442,47 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
         color: var(--color-primary-text);
       }
 
+      .quiz-builder {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .quiz-builder__header,
+      .quiz-question__header,
+      .quiz-option {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+
+      .quiz-builder__header {
+        padding: 1rem;
+        border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-sm);
+        background: var(--color-neutral-50);
+      }
+
+      .quiz-question {
+        display: grid;
+        gap: 0.9rem;
+        padding: 1rem;
+        border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-sm);
+      }
+
+      .quiz-option input[type='text'],
+      .quiz-option input:not([type]) {
+        flex: 1;
+      }
+
+      .quiz-option__correct {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        white-space: nowrap;
+      }
+
       .status-chip.muted {
         background: var(--color-neutral-100);
         color: var(--color-secondary-paragraph);
@@ -359,7 +494,10 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
         }
 
         .lesson-card,
-        .lesson-card__header {
+        .lesson-card__header,
+        .quiz-builder__header,
+        .quiz-question__header,
+        .quiz-option {
           flex-direction: column;
           align-items: stretch;
         }
@@ -382,6 +520,9 @@ export class CourseLessonsManagementComponent implements OnInit {
   protected readonly savingLesson = signal(false);
   protected readonly deletingLessonInFlight = signal(false);
   protected readonly uploadedLessonFileName = signal('');
+  protected readonly quizQuestions = signal<EditableQuizQuestion[]>([]);
+  protected readonly quizPassingScore = signal(70);
+  protected readonly quizValidationError = signal('');
   protected readonly isEditMode = computed(() => !!this.editingLesson());
   protected readonly requiredLessonsCount = computed(() => this.lessons().filter((lesson) => lesson.isRequired).length);
   protected readonly totalDurationMinutes = computed(() =>
@@ -439,6 +580,7 @@ export class CourseLessonsManagementComponent implements OnInit {
       isRequired: true,
     });
     this.uploadedLessonFileName.set('');
+    this.resetQuizBuilder();
     clearControlState(this.lessonForm);
     this.lessonDialog().open();
   }
@@ -455,6 +597,7 @@ export class CourseLessonsManagementComponent implements OnInit {
       isRequired: lesson.isRequired,
     });
     this.uploadedLessonFileName.set('');
+    this.loadQuizBuilder(lesson.quiz || null);
     clearControlState(this.lessonForm);
     this.lessonDialog().open();
   }
@@ -462,6 +605,7 @@ export class CourseLessonsManagementComponent implements OnInit {
   protected closeLessonDialog() {
     this.uploadedLessonFileName.set('');
     this.editingLesson.set(null);
+    this.resetQuizBuilder();
     this.lessonDialog().close();
   }
 
@@ -487,6 +631,12 @@ export class CourseLessonsManagementComponent implements OnInit {
     }
 
     const formValue = this.lessonForm.getRawValue();
+    const isQuiz = formValue.contentType === 'quiz';
+    const quiz = isQuiz ? this.buildQuizPayload() : null;
+    if (isQuiz && !quiz) {
+      return;
+    }
+
     const payload = {
       courseId,
       title: formValue.title.trim(),
@@ -494,8 +644,9 @@ export class CourseLessonsManagementComponent implements OnInit {
       order: Number(formValue.order),
       durationMinutes: Number(formValue.durationMinutes),
       isRequired: formValue.isRequired,
-      contentUrl: formValue.contentUrl.trim() || undefined,
+      contentUrl: isQuiz ? undefined : formValue.contentUrl.trim() || undefined,
       contentHtml: formValue.contentHtml.trim() || undefined,
+      quiz,
     };
 
     const editingLessonId = this.objectId(this.editingLesson() || {});
@@ -535,6 +686,14 @@ export class CourseLessonsManagementComponent implements OnInit {
     return this.lessonForm.controls.contentType.value !== 'video' && this.lessonForm.controls.contentType.value !== 'pdf';
   }
 
+  protected isQuizContentType() {
+    return this.lessonForm.controls.contentType.value === 'quiz';
+  }
+
+  protected supportsLessonUrl() {
+    return !this.isQuizContentType();
+  }
+
   protected lessonUrlHelpText() {
     return this.lessonUsesTextContent()
       ? 'اختياري إذا كتبت نص المحتوى، ومطلوب إذا كنت تريد فتح ملف أو رابط خارجي.'
@@ -547,9 +706,101 @@ export class CourseLessonsManagementComponent implements OnInit {
   }
 
   protected lessonContentErrorMessage() {
+    if (this.isQuizContentType()) {
+      return '';
+    }
+
     return this.lessonUsesTextContent()
       ? 'أضف نص المحتوى أو رابطاً أو ملفاً للدرس.'
       : 'أضف رابط المحتوى أو ارفع ملفاً لهذا الدرس.';
+  }
+
+  protected updateQuizPassingScore(event: Event) {
+    const value = Number((event.target as HTMLInputElement | null)?.value || 0);
+    this.quizPassingScore.set(Math.min(100, Math.max(0, value)));
+    this.quizValidationError.set('');
+  }
+
+  protected addQuizQuestion() {
+    this.quizQuestions.update((questions) => [...questions, this.createEmptyQuizQuestion()]);
+    this.quizValidationError.set('');
+  }
+
+  protected removeQuizQuestion(questionIndex: number) {
+    this.quizQuestions.update((questions) => questions.filter((_, index) => index !== questionIndex));
+    this.quizValidationError.set('');
+  }
+
+  protected updateQuizQuestionPrompt(questionIndex: number, event: Event) {
+    const value = (event.target as HTMLInputElement | null)?.value || '';
+    this.quizQuestions.update((questions) =>
+      questions.map((question, index) =>
+        index === questionIndex ? { ...question, prompt: value } : question,
+      ),
+    );
+    this.quizValidationError.set('');
+  }
+
+  protected addQuizOption(questionIndex: number) {
+    this.quizQuestions.update((questions) =>
+      questions.map((question, index) =>
+        index === questionIndex
+          ? {
+              ...question,
+              options: [...question.options, this.createEmptyQuizOption()],
+            }
+          : question,
+      ),
+    );
+    this.quizValidationError.set('');
+  }
+
+  protected removeQuizOption(questionIndex: number, optionIndex: number) {
+    this.quizQuestions.update((questions) =>
+      questions.map((question, index) => {
+        if (index !== questionIndex || question.options.length <= 2) {
+          return question;
+        }
+
+        const nextOptions = question.options.filter((_, currentOptionIndex) => currentOptionIndex !== optionIndex);
+        const nextCorrectOptionId = nextOptions.some((option) => option.id === question.correctOptionId)
+          ? question.correctOptionId
+          : nextOptions[0]?.id || '';
+
+        return {
+          ...question,
+          options: nextOptions,
+          correctOptionId: nextCorrectOptionId,
+        };
+      }),
+    );
+    this.quizValidationError.set('');
+  }
+
+  protected updateQuizOptionText(questionIndex: number, optionIndex: number, event: Event) {
+    const value = (event.target as HTMLInputElement | null)?.value || '';
+    this.quizQuestions.update((questions) =>
+      questions.map((question, index) =>
+        index === questionIndex
+          ? {
+              ...question,
+              options: question.options.map((option, currentOptionIndex) =>
+                currentOptionIndex === optionIndex ? { ...option, text: value } : option,
+              ),
+            }
+          : question,
+      ),
+    );
+    this.quizValidationError.set('');
+  }
+
+  protected setCorrectQuizOption(questionIndex: number, optionId: string) {
+    this.quizQuestions.update((questions) =>
+      questions.map((question, index) =>
+        index === questionIndex ? { ...question, correctOptionId: optionId } : question,
+      ),
+    );
+    this.quizValidationError.set('');
   }
 
   protected onLessonFileSelected(event: Event) {
@@ -619,8 +870,105 @@ export class CourseLessonsManagementComponent implements OnInit {
     return value.length > 280 ? `${value.slice(0, 280)}...` : value;
   }
 
+  protected quizSummaryLabel(lesson: Lesson) {
+    const questionsCount = lesson.quiz?.questions?.length || 0;
+    const passingScore = lesson.quiz?.passingScorePercentage ?? 70;
+    return `${questionsCount} أسئلة • اجتياز من ${passingScore}%`;
+  }
+
   private objectId(item: { _id?: string; id?: string }) {
     return item._id || item.id || '';
+  }
+
+  private resetQuizBuilder() {
+    this.quizQuestions.set([this.createEmptyQuizQuestion()]);
+    this.quizPassingScore.set(70);
+    this.quizValidationError.set('');
+  }
+
+  private loadQuizBuilder(quiz: LessonQuiz | null) {
+    if (!quiz?.questions?.length) {
+      this.resetQuizBuilder();
+      return;
+    }
+
+    this.quizQuestions.set(
+      quiz.questions.map((question) => ({
+        id: question.id,
+        prompt: question.prompt,
+        correctOptionId: question.correctOptionId || question.options[0]?.id || '',
+        options: question.options.map((option) => ({
+          id: option.id,
+          text: option.text,
+        })),
+      })),
+    );
+    this.quizPassingScore.set(quiz.passingScorePercentage ?? 70);
+    this.quizValidationError.set('');
+  }
+
+  private buildQuizPayload(): LessonQuiz | null {
+    const questions = this.quizQuestions();
+    if (!questions.length) {
+      this.quizValidationError.set('أضف سؤالاً واحداً على الأقل للاختبار.');
+      return null;
+    }
+
+    for (const [questionIndex, question] of questions.entries()) {
+      if (!question.prompt.trim()) {
+        this.quizValidationError.set(`أدخل نص السؤال رقم ${questionIndex + 1}.`);
+        return null;
+      }
+
+      if (question.options.length < 2) {
+        this.quizValidationError.set(`أضف خيارين على الأقل للسؤال رقم ${questionIndex + 1}.`);
+        return null;
+      }
+
+      if (question.options.some((option) => !option.text.trim())) {
+        this.quizValidationError.set(`أكمل نص جميع الخيارات في السؤال رقم ${questionIndex + 1}.`);
+        return null;
+      }
+
+      if (!question.correctOptionId || !question.options.some((option) => option.id === question.correctOptionId)) {
+        this.quizValidationError.set(`حدد الإجابة الصحيحة للسؤال رقم ${questionIndex + 1}.`);
+        return null;
+      }
+    }
+
+    this.quizValidationError.set('');
+
+    return {
+      passingScorePercentage: this.quizPassingScore(),
+      questions: questions.map((question) => ({
+        id: question.id,
+        prompt: question.prompt.trim(),
+        correctOptionId: question.correctOptionId,
+        options: question.options.map((option) => ({
+          id: option.id,
+          text: option.text.trim(),
+        })),
+      })),
+    };
+  }
+
+  private createEmptyQuizQuestion(): EditableQuizQuestion {
+    const firstOption = this.createEmptyQuizOption();
+    const secondOption = this.createEmptyQuizOption();
+
+    return {
+      id: crypto.randomUUID(),
+      prompt: '',
+      correctOptionId: firstOption.id,
+      options: [firstOption, secondOption],
+    };
+  }
+
+  private createEmptyQuizOption(): EditableQuizOption {
+    return {
+      id: crypto.randomUUID(),
+      text: '',
+    };
   }
 
   private loadData(courseId: string) {

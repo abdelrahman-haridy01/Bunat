@@ -5,6 +5,45 @@ import { LessonContentType } from 'src/common/enums/domain.enums';
 
 export type LessonDocument = HydratedDocument<Lesson>;
 
+@Schema({ _id: false })
+export class QuizOption {
+  @Prop({ required: true, trim: true })
+  id!: string;
+
+  @Prop({ required: true, trim: true })
+  text!: string;
+}
+
+export const QuizOptionSchema = SchemaFactory.createForClass(QuizOption);
+
+@Schema({ _id: false })
+export class QuizQuestion {
+  @Prop({ required: true, trim: true })
+  id!: string;
+
+  @Prop({ required: true, trim: true })
+  prompt!: string;
+
+  @Prop({ type: [QuizOptionSchema], default: [] })
+  options!: QuizOption[];
+
+  @Prop({ required: true, trim: true })
+  correctOptionId!: string;
+}
+
+export const QuizQuestionSchema = SchemaFactory.createForClass(QuizQuestion);
+
+@Schema({ _id: false })
+export class LessonQuiz {
+  @Prop({ default: 70 })
+  passingScorePercentage!: number;
+
+  @Prop({ type: [QuizQuestionSchema], default: [] })
+  questions!: QuizQuestion[];
+}
+
+export const LessonQuizSchema = SchemaFactory.createForClass(LessonQuiz);
+
 @Schema({ timestamps: true })
 export class Lesson {
   @Prop({ type: Types.ObjectId, ref: 'Course', required: true })
@@ -21,6 +60,9 @@ export class Lesson {
 
   @Prop({ type: String, default: null })
   contentHtml!: string | null;
+
+  @Prop({ type: LessonQuizSchema, default: null })
+  quiz!: LessonQuiz | null;
 
   @Prop({ required: true })
   order!: number;

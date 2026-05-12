@@ -10,7 +10,7 @@ import { IconComponent } from './icon.component';
   template: `
     <aside class="sidebar card">
       <div class="brand">
-        <div class="brand-mark">ب</div>
+        <img class="brand-mark" src="assets/bunat-small-logo.svg" alt="شعار بُناة" />
         <div>
           <strong>بُناة</strong>
           <p>منصة التدريب والتطوير</p>
@@ -53,14 +53,9 @@ import { IconComponent } from './icon.component';
       }
 
       .brand-mark {
-        width: 3rem;
-        height: 3rem;
-        border-radius: 1rem;
-        display: grid;
-        place-items: center;
-        background: linear-gradient(135deg, var(--color-primary-default), var(--color-secondary-default));
-        color: white;
-        font-weight: 700;
+        width: 3.6rem;
+        height: auto;
+        flex: 0 0 auto;
       }
 
       .nav {

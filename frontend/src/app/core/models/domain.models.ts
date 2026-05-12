@@ -33,6 +33,36 @@ export interface Course {
   lessons?: Lesson[];
 }
 
+export interface QuizOption {
+  id: string;
+  text: string;
+}
+
+export interface QuizQuestion {
+  id: string;
+  prompt: string;
+  options: QuizOption[];
+  correctOptionId?: string;
+}
+
+export interface LessonQuiz {
+  passingScorePercentage: number;
+  questions: QuizQuestion[];
+}
+
+export interface LessonProgressSummary {
+  status: 'not_started' | 'in_progress' | 'completed';
+  completedAt?: string | null;
+  timeSpentMinutes: number;
+  attemptCount?: number;
+  lastAttemptAt?: string | null;
+  lastQuizScorePercentage?: number | null;
+  bestQuizScorePercentage?: number | null;
+  bestCorrectAnswersCount?: number | null;
+  questionCount?: number | null;
+  quizPassed?: boolean;
+}
+
 export interface Lesson {
   _id?: string;
   id?: string;
@@ -41,9 +71,11 @@ export interface Lesson {
   contentType: 'video' | 'article' | 'pdf' | 'quiz' | 'task';
   contentUrl?: string | null;
   contentHtml?: string | null;
+  quiz?: LessonQuiz | null;
   order: number;
   durationMinutes: number;
   isRequired: boolean;
+  progress?: LessonProgressSummary | null;
 }
 
 export interface Enrollment {
@@ -83,6 +115,18 @@ export interface PerformanceRecord {
   improvementPercentage: number;
   measuredAt: string;
   notes?: string;
+}
+
+export interface EmployeeQuizResult {
+  courseId?: Course | string | null;
+  lessonId?: Lesson | string | null;
+  scorePercentage: number;
+  passed: boolean;
+  attemptCount: number;
+  correctAnswersCount: number;
+  questionCount: number;
+  lastAttemptAt?: string | null;
+  completedAt?: string | null;
 }
 
 export interface DashboardStat {

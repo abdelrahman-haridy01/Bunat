@@ -182,15 +182,14 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
             <div class="field">
               <label>نوع المحتوى</label>
               <select formControlName="contentType" [class.is-invalid]="hasVisibleError(lessonForm.controls.contentType)">
-                <option value="video">فيديو</option>
-                <option value="article">مقال</option>
-                <option value="pdf">PDF</option>
-                <option value="quiz">اختبار</option>
-                <option value="task">مهمة</option>
-              </select>
-              <div class="field-error" *ngIf="hasVisibleError(lessonForm.controls.contentType)">
-                {{ getVisibleErrorMessage(lessonForm.controls.contentType, lessonValidationMessages.contentType) }}
-              </div>
+              <option value="video">فيديو</option>
+              <option value="article">مقال</option>
+              <option value="pdf">PDF</option>
+              <option value="task">مهمة</option>
+            </select>
+            <div class="field-error" *ngIf="hasVisibleError(lessonForm.controls.contentType)">
+              {{ getVisibleErrorMessage(lessonForm.controls.contentType, lessonValidationMessages.contentType) }}
+            </div>
             </div>
             <div class="field">
               <label>الترتيب</label>
@@ -231,10 +230,13 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
               <label>رفع ملف المحتوى</label>
               <input type="file" (change)="onLessonFileSelected($event)" />
               <div class="field-help" *ngIf="uploadedLessonFileName()">تم اختيار الملف: {{ uploadedLessonFileName() }}</div>
-              <div class="field-help" *ngIf="!uploadedLessonFileName()">
-                يتم حفظ الملف محلياً داخل بيانات الدرس حالياً، وليس في مخزن ملفات خارجي.
-              </div>
+            <div class="field-help" *ngIf="!uploadedLessonFileName()">
+              يتم حفظ الملف محلياً داخل بيانات الدرس حالياً، وليس في مخزن ملفات خارجي.
             </div>
+            <div class="field-help">
+              لإنشاء اختبار متعدد الخيارات استخدم شاشة "الدروس" الخاصة بالدورة.
+            </div>
+          </div>
 
             <label class="checkbox-field field--full">
               <input type="checkbox" formControlName="isRequired" />

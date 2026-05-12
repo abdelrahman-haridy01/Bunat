@@ -39,6 +39,7 @@ export enum EnrollmentStatus {
 
 export enum LessonProgressStatus {
   NotStarted = 'not_started',
+  InProgress = 'in_progress',
   Completed = 'completed',
 }
 
@@ -73,4 +74,3 @@ export enum BadgeCriteriaType {
   Points = 'points',
   Streak = 'streak',
 }
-
