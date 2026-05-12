@@ -90,6 +90,7 @@ export class AppShellComponent {
     return [
       { label: 'الرئيسية', link: '/admin/dashboard', icon: 'dashboard' },
       { label: 'المستخدمون', link: '/admin/users', icon: 'users' },
+      { label: 'الفرق', link: '/admin/teams', icon: 'team' },
       { label: 'الدورات', link: '/admin/courses', icon: 'book-open' },
       { label: 'المؤشرات', link: '/admin/kpis', icon: 'target' },
       { label: 'التكليفات', link: '/admin/assignments', icon: 'calendar' },

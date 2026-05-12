@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 
 import { UserRole, UserSummary } from '../../../core/models/domain.models';
 import { DataTableComponent, DialogComponent, IconComponent } from '../../../shared/components';
@@ -162,6 +163,7 @@ export class UsersManagementComponent implements OnInit {
   private readonly usersApi = inject(UsersApiService);
   private readonly lookupsApi = inject(LookupsApiService);
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   protected readonly createDialog = viewChild.required<DialogComponent>('createDialog');
   protected readonly deleteDialog = viewChild.required<DialogComponent>('deleteDialog');
@@ -203,6 +205,7 @@ export class UsersManagementComponent implements OnInit {
     { key: 'statusLabel', label: 'الحالة' },
   ];
   protected readonly actions = [
+    { key: 'report', label: 'التقرير', icon: 'eye', tone: 'ghost' as const },
     { key: 'edit', label: 'تعديل', icon: 'user', tone: 'ghost' as const },
     { key: 'delete', label: 'حذف', icon: 'alert', tone: 'danger' as const },
   ];
@@ -253,6 +256,11 @@ export class UsersManagementComponent implements OnInit {
 
     const user = this.users().find((item) => (item._id || item.id) === event.row['userId']);
     if (!user) {
+      return;
+    }
+
+    if (event.key === 'report') {
+      this.router.navigate(['/admin/employees', event.row['userId'], 'report']);
       return;
     }
 

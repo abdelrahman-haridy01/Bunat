@@ -4,8 +4,6 @@ import { RouterLink } from '@angular/router';
 
 import {
   BadgeComponent,
-  DashboardChartItem,
-  DashboardChartCardComponent,
   EmptyStateComponent,
   IconComponent,
   LevelCardComponent,
@@ -30,7 +28,6 @@ import { EmployeeQuizResult, EmployeeReport, Enrollment, PerformanceRecord } fro
     BadgeComponent,
     ProgressBarComponent,
     EmptyStateComponent,
-    DashboardChartCardComponent,
   ],
   template: `
     <section class="page-grid">
@@ -117,34 +114,24 @@ import { EmployeeQuizResult, EmployeeReport, Enrollment, PerformanceRecord } fro
         </article>
       </div>
 
-      <div class="page-columns">
-        <app-dashboard-chart-card
-          title="تقدّم الدورات"
-          subtitle="أين وصل تنفيذك في كل دورة حالية."
-          icon="chart-bars"
-          [items]="courseProgressItems()"
-          [scaleMax]="100"
-        />
-
-        <article class="card panel">
-          <div class="panel-header">
-            <div>
-              <h3 class="section-title label-with-icon">
-                <app-icon name="target" [size]="18" />
-                <span>مؤشرات سريعة</span>
-              </h3>
-              <p class="section-subtitle">قراءة مختصرة لما يحتاج متابعة في مسارك الحالي.</p>
-            </div>
+      <article class="card panel">
+        <div class="panel-header">
+          <div>
+            <h3 class="section-title label-with-icon">
+              <app-icon name="target" [size]="18" />
+              <span>مؤشرات سريعة</span>
+            </h3>
+            <p class="section-subtitle">قراءة مختصرة لما يحتاج متابعة في مسارك الحالي.</p>
           </div>
+        </div>
 
-          <div class="insight-list">
-            <article class="insight-item" *ngFor="let insight of employeeInsights()">
-              <strong>{{ insight.title }}</strong>
-              <p>{{ insight.description }}</p>
-            </article>
-          </div>
-        </article>
-      </div>
+        <div class="insight-list">
+          <article class="insight-item" *ngFor="let insight of employeeInsights()">
+            <strong>{{ insight.title }}</strong>
+            <p>{{ insight.description }}</p>
+          </article>
+        </div>
+      </article>
     </section>
   `,
   styles: [
@@ -273,25 +260,6 @@ export class EmployeeDashboardComponent implements OnInit {
     return Math.round(
       quizResults.reduce((total, result) => total + result.scorePercentage, 0) / quizResults.length,
     );
-  }
-
-  protected courseProgressItems(): DashboardChartItem[] {
-    return this.enrollments()
-      .slice()
-      .sort((a, b) => b.progressPercentage - a.progressPercentage)
-      .slice(0, 5)
-      .map((enrollment) => {
-        const tone: DashboardChartItem['tone'] =
-          enrollment.status === 'completed' ? 'success' : enrollment.status === 'failed' ? 'warning' : 'info';
-
-        return {
-          label: this.courseTitle(enrollment),
-          value: enrollment.progressPercentage,
-          valueLabel: `${enrollment.progressPercentage}%`,
-          hint: this.statusLabel(enrollment.status),
-          tone,
-        };
-      });
   }
 
   protected employeeInsights() {

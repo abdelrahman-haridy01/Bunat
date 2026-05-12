@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
 import { EnrollmentStatus, LessonContentType, UserRole } from 'src/common/enums/domain.enums';
+import { toObjectId } from 'src/common/utils/object-id.util';
 import { Enrollment, EnrollmentDocument } from 'src/enrollments/schemas/enrollment.schema';
 import { LessonProgress, LessonProgressDocument } from 'src/lessons/schemas/lesson-progress.schema';
 import { PerformanceRecord, PerformanceRecordDocument } from 'src/performance-records/schemas/performance-record.schema';
@@ -24,12 +25,13 @@ export class ReportsService {
   ) {}
 
   async getEmployeeReport(userId: string) {
+    const normalizedUserId = toObjectId(userId);
     const [user, enrollments, performanceRecords, lessonProgress] = await Promise.all([
       this.userModel.findById(userId).populate('levelId').exec(),
-      this.enrollmentModel.find({ userId }).populate('courseId').exec(),
-      this.performanceRecordModel.find({ userId }).populate('kpiId').exec(),
+      this.enrollmentModel.find({ userId: normalizedUserId }).populate('courseId').exec(),
+      this.performanceRecordModel.find({ userId: normalizedUserId }).populate('kpiId').exec(),
       this.lessonProgressModel
-        .find({ userId })
+        .find({ userId: normalizedUserId })
         .populate('courseId lessonId')
         .sort({ lastAttemptAt: -1, updatedAt: -1 })
         .exec(),
@@ -64,8 +66,14 @@ export class ReportsService {
     const memberIds =
       team?.members.map((member: any) => String(member?._id ?? member?.id ?? member)) ?? [];
     const [enrollments, performanceRecords] = await Promise.all([
-      this.enrollmentModel.find({ userId: { $in: memberIds } }).populate('userId courseId').exec(),
-      this.performanceRecordModel.find({ userId: { $in: memberIds } }).populate('userId kpiId').exec(),
+      this.enrollmentModel
+        .find({ userId: { $in: memberIds.map((id) => toObjectId(id)) } })
+        .populate('userId courseId')
+        .exec(),
+      this.performanceRecordModel
+        .find({ userId: { $in: memberIds.map((id) => toObjectId(id)) } })
+        .populate('userId kpiId')
+        .exec(),
     ]);
 
     return {
@@ -76,26 +84,59 @@ export class ReportsService {
   }
 
   async getManagerDashboard(managerId: string) {
-    const teamMembers = await this.userModel.find({ managerId, role: UserRole.Employee }).exec();
-    const memberIds = teamMembers.map((member) => member.id);
+    const normalizedManagerId = this.extractId(managerId);
+    const allUsers = await this.usersService.findAll();
+    const usersById = new Map(
+      allUsers
+        .map((user) => [this.extractId(user), user] as const)
+        .filter(([id]) => !!id),
+    );
+    const directReportIds = allUsers
+      .filter((user) => user.role === UserRole.Employee && this.extractId(user.managerId) === normalizedManagerId)
+      .map((user) => this.extractId(user));
+    const managedTeams = await this.teamModel.find({ managerId: normalizedManagerId }).select('members').exec();
+    const teamMemberIds = managedTeams.flatMap((team: any) =>
+      (team.members ?? []).map((member: unknown) => this.extractId(member)),
+    );
+    const memberIds = [...new Set([...teamMemberIds, ...directReportIds])].filter((id) => {
+      const user = usersById.get(id);
+      return !!id && user?.role === UserRole.Employee;
+    });
+    const teamMembers = memberIds
+      .map((id) => usersById.get(id))
+      .filter((member): member is NonNullable<typeof member> => !!member);
     const [enrollments, performanceRecords] = await Promise.all([
-      this.enrollmentModel.find({ userId: { $in: memberIds } }).populate('courseId').exec(),
-      this.performanceRecordModel.find({ userId: { $in: memberIds } }).populate('kpiId').exec(),
+      this.enrollmentModel
+        .find({ userId: { $in: memberIds.map((id) => toObjectId(id)) } })
+        .populate('courseId')
+        .exec(),
+      this.performanceRecordModel
+        .find({ userId: { $in: memberIds.map((id) => toObjectId(id)) } })
+        .populate('kpiId')
+        .exec(),
     ]);
 
     const completionByEmployee = teamMembers.map((member) => {
-      const memberEnrollments = enrollments.filter((enrollment) => enrollment.userId.toString() === member.id);
+      const memberId = this.extractId(member);
+      const memberEnrollments = enrollments.filter((enrollment) => enrollment.userId.toString() === memberId);
       const completedCount = memberEnrollments.filter(
         (enrollment) => enrollment.status === EnrollmentStatus.Completed,
       ).length;
       const totalCount = memberEnrollments.length;
+      const averageProgress = totalCount
+        ? Math.round(
+            memberEnrollments.reduce((sum, enrollment) => sum + (enrollment.progressPercentage ?? 0), 0) / totalCount,
+          )
+        : 0;
       const latestPerformance = performanceRecords
-        .filter((record) => record.userId.toString() === member.id)
+        .filter((record) => record.userId.toString() === memberId)
         .sort((a, b) => b.measuredAt.getTime() - a.measuredAt.getTime())[0];
 
       return {
-        employee: this.usersService.toSafeUser(member),
+        employee: member,
+        assignedCourses: totalCount,
         completionRate: totalCount ? Math.round((completedCount / totalCount) * 100) : 0,
+        averageProgress,
         latestImprovement: latestPerformance?.improvementPercentage ?? 0,
       };
     });
@@ -103,9 +144,19 @@ export class ReportsService {
     return {
       teamMembers: completionByEmployee,
       topPerformers: [...completionByEmployee]
-        .sort((a, b) => Number(b.employee.pointsTotal) - Number(a.employee.pointsTotal))
-        .slice(0, 5),
-      needsSupport: completionByEmployee.filter((entry) => entry.completionRate < 50),
+        .sort((a, b) => {
+          if (b.completionRate !== a.completionRate) {
+            return b.completionRate - a.completionRate;
+          }
+
+          if (b.averageProgress !== a.averageProgress) {
+            return b.averageProgress - a.averageProgress;
+          }
+
+          return Number(b.employee.pointsTotal) - Number(a.employee.pointsTotal);
+        })
+        .slice(0, Math.min(3, completionByEmployee.length)),
+      needsSupport: completionByEmployee.filter((entry) => entry.assignedCourses > 0 && entry.averageProgress < 50),
     };
   }
 
@@ -180,5 +231,22 @@ export class ReportsService {
       averageEmployeesPerManager: managers.length ? Number((employees.length / managers.length).toFixed(1)) : 0,
       averageMembersPerTeam: teams.length ? Number((totalTeamMembers / teams.length).toFixed(1)) : 0,
     };
+  }
+
+  private extractId(value: unknown) {
+    if (!value) {
+      return '';
+    }
+
+    if (typeof value === 'string') {
+      return value;
+    }
+
+    if (typeof value === 'object') {
+      const record = value as Record<string, unknown>;
+      return String(record._id ?? record.id ?? '');
+    }
+
+    return String(value);
   }
 }

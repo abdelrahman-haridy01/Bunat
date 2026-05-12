@@ -29,7 +29,7 @@ import { TopPerformersComponent } from '../components/top-performers.component';
         <app-stat-card label="عدد أعضاء الفريق" [value]="dashboard.teamMembers.length" icon="team" />
         <app-stat-card label="الأعلى أداءً" [value]="dashboard.topPerformers.length" tone="success" icon="award" />
         <app-stat-card label="بحاجة إلى دعم" [value]="dashboard.needsSupport.length" tone="info" icon="alert" />
-        <app-stat-card label="متوسط الإنجاز" [value]="averageCompletion(dashboard) + '%'" tone="success" icon="chart" />
+        <app-stat-card label="متوسط التقدّم" [value]="averageProgress(dashboard) + '%'" tone="success" icon="chart" />
       </div>
 
       <div class="split-grid">
@@ -126,33 +126,33 @@ export class ManagerDashboardComponent implements OnInit {
     this.reportsApi.getManagerDashboard().subscribe((response) => this.dashboard.set(response));
   }
 
-  protected averageCompletion(dashboard: ManagerDashboard) {
+  protected averageProgress(dashboard: ManagerDashboard) {
     if (!dashboard.teamMembers.length) {
       return 0;
     }
 
     return Math.round(
-      dashboard.teamMembers.reduce((sum, member) => sum + member.completionRate, 0) / dashboard.teamMembers.length,
+      dashboard.teamMembers.reduce((sum, member) => sum + member.averageProgress, 0) / dashboard.teamMembers.length,
     );
   }
 
   protected teamCompletionItems(teamMembers: ManagerDashboardEntry[]): DashboardChartItem[] {
     return teamMembers
       .slice()
-      .sort((a, b) => b.completionRate - a.completionRate)
+      .sort((a, b) => b.averageProgress - a.averageProgress)
       .slice(0, 6)
       .map((member) => {
         const tone: DashboardChartItem['tone'] =
-          member.completionRate >= 75 ? 'success' : member.completionRate >= 50 ? 'info' : 'warning';
+          member.averageProgress >= 75 ? 'success' : member.averageProgress >= 50 ? 'info' : 'warning';
 
         return {
           label: member.employee?.fullName || 'عضو فريق',
-          value: member.completionRate,
-          valueLabel: `${member.completionRate}%`,
+          value: member.averageProgress,
+          valueLabel: `${member.averageProgress}%`,
           hint:
             member.latestImprovement > 0
               ? `تحسن آخر قدره ${member.latestImprovement}%`
-              : 'لا يوجد تحسن مسجل حديثاً',
+              : `${member.assignedCourses} دورات مسندة`,
           tone,
         };
       });
@@ -171,7 +171,7 @@ export class ManagerDashboardComponent implements OnInit {
       {
         title: 'أفضل زخم حالياً',
         description: bestPerformer
-          ? `${bestPerformer.employee?.fullName} يتصدر الفريق حالياً بـ ${bestPerformer.employee?.pointsTotal} نقطة.`
+          ? `${bestPerformer.employee?.fullName} يتصدر الفريق حالياً بتقدم ${bestPerformer.averageProgress}% ومعدل إكمال ${bestPerformer.completionRate}%.`
           : 'لا يوجد متصدر واضح لأن الفريق لا يحتوي على بيانات كافية بعد.',
       },
       {
@@ -183,7 +183,7 @@ export class ManagerDashboardComponent implements OnInit {
       {
         title: 'الاحتياج للدعم',
         description: supportShare
-          ? `${supportShare}% من الفريق دون مستوى الإنجاز المستهدف حالياً ويحتاجون متابعة أقرب.`
+          ? `${supportShare}% من الفريق دون مستوى التقدّم المستهدف حالياً ويحتاجون متابعة أقرب.`
           : 'لا توجد حالات حرجة حالياً، ومستوى الإنجاز ضمن النطاق المقبول لكل الفريق.',
       },
     ];

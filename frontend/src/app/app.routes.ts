@@ -115,6 +115,22 @@ export const appRoutes: Routes = [
           ),
       },
       {
+        path: 'employees/:id/report',
+        data: { title: 'تقرير العضو', eyebrow: 'تفاصيل التدريب والأثر' },
+        loadComponent: () =>
+          import('./features/manager/pages/employee-performance.component').then(
+            (m) => m.EmployeePerformanceComponent,
+          ),
+      },
+      {
+        path: 'teams',
+        data: { title: 'إدارة الفرق', eyebrow: 'الفرق والأعضاء والمديرون' },
+        loadComponent: () =>
+          import('./features/admin/pages/teams-management.component').then(
+            (m) => m.TeamsManagementComponent,
+          ),
+      },
+      {
         path: 'courses',
         data: { title: 'إدارة الدورات', eyebrow: 'المحتوى والربط بالمؤشرات' },
         loadComponent: () =>

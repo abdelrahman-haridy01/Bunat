@@ -129,6 +129,15 @@ export interface EmployeeQuizResult {
   completedAt?: string | null;
 }
 
+export interface TeamSummary {
+  _id?: string;
+  id?: string;
+  name: string;
+  departmentId?: { _id?: string; name?: string } | string | null;
+  managerId?: UserSummary | string | null;
+  members?: Array<UserSummary | string>;
+}
+
 export interface EmployeeReport {
   user: UserSummary | null;
   enrollments: Enrollment[];
@@ -142,7 +151,9 @@ export interface EmployeeReport {
 
 export interface ManagerDashboardEntry {
   employee: UserSummary;
+  assignedCourses: number;
   completionRate: number;
+  averageProgress: number;
   latestImprovement: number;
 }
 

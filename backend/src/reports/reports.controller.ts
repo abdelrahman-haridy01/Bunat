@@ -26,8 +26,8 @@ export class ReportsController {
 
   @Roles(UserRole.Manager, UserRole.Admin, UserRole.Hr)
   @Get('manager-dashboard')
-  managerDashboard(@CurrentUser() user: { id: string }) {
-    return this.reportsService.getManagerDashboard(user.id);
+  managerDashboard(@CurrentUser() user: { id?: string; _id?: string }) {
+    return this.reportsService.getManagerDashboard(String(user._id ?? user.id ?? ''));
   }
 
   @Roles(UserRole.Admin, UserRole.Hr)
@@ -36,4 +36,3 @@ export class ReportsController {
     return this.reportsService.getAdminDashboard();
   }
 }
-
