@@ -4,6 +4,8 @@ import { RouterLink } from '@angular/router';
 
 import {
   BadgeComponent,
+  DashboardChartItem,
+  DashboardChartCardComponent,
   EmptyStateComponent,
   IconComponent,
   LevelCardComponent,
@@ -14,7 +16,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { EnrollmentsApiService } from '../../../core/services/enrollments-api.service';
 import { GamificationApiService } from '../../../core/services/gamification-api.service';
 import { ReportsApiService } from '../../../core/services/reports-api.service';
-import { Enrollment } from '../../../core/models/domain.models';
+import { EmployeeQuizResult, EmployeeReport, Enrollment, PerformanceRecord } from '../../../core/models/domain.models';
 
 @Component({
   selector: 'app-employee-dashboard',
@@ -28,6 +30,7 @@ import { Enrollment } from '../../../core/models/domain.models';
     BadgeComponent,
     ProgressBarComponent,
     EmptyStateComponent,
+    DashboardChartCardComponent,
   ],
   template: `
     <section class="page-grid">
@@ -45,6 +48,7 @@ import { Enrollment } from '../../../core/models/domain.models';
         <app-stat-card label="الدورات المكلفة" [value]="enrollments().length" icon="book-open" />
         <app-stat-card label="الدورات المكتملة" [value]="completedCount()" tone="success" icon="folder-check" />
         <app-stat-card label="متوسط التقدّم" [value]="averageProgress() + '%'" tone="info" icon="chart" />
+        <app-stat-card label="متوسط الاختبارات" [value]="averageQuizScore() + '%'" tone="info" icon="chart-bars" />
         <app-level-card
           [name]="gamification()?.user?.levelId?.name || 'مستوى جاري'"
           [points]="gamification()?.user?.pointsTotal || 0"
@@ -112,6 +116,35 @@ import { Enrollment } from '../../../core/models/domain.models';
           </ng-template>
         </article>
       </div>
+
+      <div class="page-columns">
+        <app-dashboard-chart-card
+          title="تقدّم الدورات"
+          subtitle="أين وصل تنفيذك في كل دورة حالية."
+          icon="chart-bars"
+          [items]="courseProgressItems()"
+          [scaleMax]="100"
+        />
+
+        <article class="card panel">
+          <div class="panel-header">
+            <div>
+              <h3 class="section-title label-with-icon">
+                <app-icon name="target" [size]="18" />
+                <span>مؤشرات سريعة</span>
+              </h3>
+              <p class="section-subtitle">قراءة مختصرة لما يحتاج متابعة في مسارك الحالي.</p>
+            </div>
+          </div>
+
+          <div class="insight-list">
+            <article class="insight-item" *ngFor="let insight of employeeInsights()">
+              <strong>{{ insight.title }}</strong>
+              <p>{{ insight.description }}</p>
+            </article>
+          </div>
+        </article>
+      </div>
     </section>
   `,
   styles: [
@@ -135,7 +168,8 @@ import { Enrollment } from '../../../core/models/domain.models';
       }
 
       .course-list,
-      .badge-list {
+      .badge-list,
+      .insight-list {
         display: grid;
         gap: 1rem;
       }
@@ -164,9 +198,21 @@ import { Enrollment } from '../../../core/models/domain.models';
         color: var(--color-primary-default);
       }
 
-      .course-item p {
+      .course-item p,
+      .insight-item p {
         margin: 0.35rem 0 0;
         color: var(--color-secondary-paragraph);
+      }
+
+      .insight-item {
+        padding: 1rem;
+        border-radius: 1rem;
+        background: linear-gradient(180deg, var(--color-neutral-50), #ffffff);
+        border: 1px solid var(--color-neutral-200);
+      }
+
+      .insight-item strong {
+        color: var(--color-display);
       }
 
       @media (max-width: 960px) {
@@ -187,6 +233,7 @@ export class EmployeeDashboardComponent implements OnInit {
   protected readonly enrollments = signal<Enrollment[]>([]);
   protected readonly gamification = signal<any>(null);
   protected readonly userBadges = signal<any[]>([]);
+  protected readonly report = signal<EmployeeReport | null>(null);
 
   ngOnInit() {
     const userId = this.authService.currentUser()?._id || this.authService.currentUser()?.id;
@@ -195,7 +242,7 @@ export class EmployeeDashboardComponent implements OnInit {
     }
 
     this.enrollmentsApi.getMyEnrollments().subscribe((response) => this.enrollments.set(response));
-    this.reportsApi.getEmployeeReport(userId).subscribe();
+    this.reportsApi.getEmployeeReport(userId).subscribe((response) => this.report.set(response));
     this.gamificationApi.getMyGamification().subscribe((response: any) => {
       this.gamification.set(response);
       this.userBadges.set(response.badges || []);
@@ -210,10 +257,88 @@ export class EmployeeDashboardComponent implements OnInit {
     if (!this.enrollments().length) {
       return 0;
     }
+
     return Math.round(
       this.enrollments().reduce((total, enrollment) => total + enrollment.progressPercentage, 0) /
         this.enrollments().length,
     );
+  }
+
+  protected averageQuizScore() {
+    const quizResults = this.report()?.quizResults || [];
+    if (!quizResults.length) {
+      return 0;
+    }
+
+    return Math.round(
+      quizResults.reduce((total, result) => total + result.scorePercentage, 0) / quizResults.length,
+    );
+  }
+
+  protected courseProgressItems(): DashboardChartItem[] {
+    return this.enrollments()
+      .slice()
+      .sort((a, b) => b.progressPercentage - a.progressPercentage)
+      .slice(0, 5)
+      .map((enrollment) => {
+        const tone: DashboardChartItem['tone'] =
+          enrollment.status === 'completed' ? 'success' : enrollment.status === 'failed' ? 'warning' : 'info';
+
+        return {
+          label: this.courseTitle(enrollment),
+          value: enrollment.progressPercentage,
+          valueLabel: `${enrollment.progressPercentage}%`,
+          hint: this.statusLabel(enrollment.status),
+          tone,
+        };
+      });
+  }
+
+  protected employeeInsights() {
+    const quizResults = this.report()?.quizResults || [];
+    const performanceRecords = this.report()?.performanceRecords || [];
+    const completedCourses = this.completedCount();
+    const passedQuizzes = quizResults.filter((result) => result.passed).length;
+
+    return [
+      {
+        title: 'وتيرة التنفيذ',
+        description: completedCourses
+          ? `أنهيت ${completedCourses} من أصل ${this.enrollments().length} دورات مكلفة حتى الآن.`
+          : 'لا توجد دورات مكتملة بعد، وأفضل نقطة بداية هي إنهاء أول دورة مكلّفة.',
+      },
+      {
+        title: 'أداء الاختبارات',
+        description: this.describeQuizProgress(quizResults, passedQuizzes),
+      },
+      {
+        title: 'أثر التدريب',
+        description: this.describePerformanceImpact(performanceRecords),
+      },
+    ];
+  }
+
+  protected describeQuizProgress(quizResults: EmployeeQuizResult[], passedQuizzes: number) {
+    if (!quizResults.length) {
+      return 'لم تُسجّل نتائج اختبارات بعد، لذلك لا يوجد خط أساس لقياس الاستيعاب.';
+    }
+
+    return `متوسط نتائجك ${this.averageQuizScore()}% مع اجتياز ${passedQuizzes} من ${quizResults.length} اختبارات.`;
+  }
+
+  protected describePerformanceImpact(performanceRecords: PerformanceRecord[]) {
+    if (!performanceRecords.length) {
+      return 'لا توجد قياسات أداء مرتبطة بتدريبك حتى الآن.';
+    }
+
+    const averageImprovement = Math.round(
+      performanceRecords.reduce((total, record) => total + record.improvementPercentage, 0) /
+        performanceRecords.length,
+    );
+
+    return averageImprovement > 0
+      ? `سجلت مؤشراتك تحسناً متوسطه ${averageImprovement}% بعد التدريب.`
+      : 'القياسات الحالية لا تظهر تحسناً واضحاً بعد، وقد تحتاج متابعة تطبيق المحتوى عملياً.';
   }
 
   protected courseTitle(enrollment: Enrollment) {

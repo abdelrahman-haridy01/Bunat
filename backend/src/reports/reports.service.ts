@@ -117,25 +117,68 @@ export class ReportsService {
       this.teamModel.find().exec(),
     ]);
 
+    const employees = users.filter((user) => user.role === UserRole.Employee);
+    const managers = users.filter((user) => user.role === UserRole.Manager);
+    const admins = users.filter((user) => user.role === UserRole.Admin);
+    const hrUsers = users.filter((user) => user.role === UserRole.Hr);
+    const completedEnrollments = enrollments.filter((enrollment) => enrollment.status === EnrollmentStatus.Completed);
+    const employeesWithManager = employees.filter((user: any) => user.managerId).length;
+    const totalTeamMembers = teams.reduce((sum, team: any) => sum + (team.members?.length ?? 0), 0);
+    const improvedCount = performanceRecords.filter((record) => record.improvementPercentage > 0).length;
+    const declinedCount = performanceRecords.filter((record) => record.improvementPercentage < 0).length;
+    const stagnantCount = performanceRecords.length - improvedCount - declinedCount;
+
     return {
       totals: {
         users: users.length,
-        employees: users.filter((user) => user.role === UserRole.Employee).length,
-        managers: users.filter((user) => user.role === UserRole.Manager).length,
+        employees: employees.length,
+        managers: managers.length,
         teams: teams.length,
         enrollments: enrollments.length,
-        completedEnrollments: enrollments.filter(
-          (enrollment) => enrollment.status === EnrollmentStatus.Completed,
-        ).length,
+        completedEnrollments: completedEnrollments.length,
         performanceRecords: performanceRecords.length,
       },
       completionRate: enrollments.length
-        ? Math.round(
-            (enrollments.filter((enrollment) => enrollment.status === EnrollmentStatus.Completed).length /
-              enrollments.length) *
-              100,
-          )
+        ? Math.round((completedEnrollments.length / enrollments.length) * 100)
         : 0,
+      roleDistribution: [
+        { role: UserRole.Employee, count: employees.length },
+        { role: UserRole.Manager, count: managers.length },
+        { role: UserRole.Admin, count: admins.length },
+        { role: UserRole.Hr, count: hrUsers.length },
+      ].filter((entry) => entry.count > 0),
+      enrollmentStatusDistribution: [
+        {
+          status: EnrollmentStatus.NotStarted,
+          count: enrollments.filter((enrollment) => enrollment.status === EnrollmentStatus.NotStarted).length,
+        },
+        {
+          status: EnrollmentStatus.InProgress,
+          count: enrollments.filter((enrollment) => enrollment.status === EnrollmentStatus.InProgress).length,
+        },
+        {
+          status: EnrollmentStatus.Completed,
+          count: completedEnrollments.length,
+        },
+        {
+          status: EnrollmentStatus.Failed,
+          count: enrollments.filter((enrollment) => enrollment.status === EnrollmentStatus.Failed).length,
+        },
+      ].filter((entry) => entry.count > 0),
+      performanceSummary: {
+        improvedCount,
+        stagnantCount,
+        declinedCount,
+        averageImprovement: performanceRecords.length
+          ? Math.round(
+              performanceRecords.reduce((sum, record) => sum + record.improvementPercentage, 0) /
+                performanceRecords.length,
+            )
+          : 0,
+      },
+      managerCoverageRate: employees.length ? Math.round((employeesWithManager / employees.length) * 100) : 0,
+      averageEmployeesPerManager: managers.length ? Number((employees.length / managers.length).toFixed(1)) : 0,
+      averageMembersPerTeam: teams.length ? Number((totalTeamMembers / teams.length).toFixed(1)) : 0,
     };
   }
 }

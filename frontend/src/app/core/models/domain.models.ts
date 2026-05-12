@@ -129,6 +129,59 @@ export interface EmployeeQuizResult {
   completedAt?: string | null;
 }
 
+export interface EmployeeReport {
+  user: UserSummary | null;
+  enrollments: Enrollment[];
+  performanceRecords: PerformanceRecord[];
+  quizResults: EmployeeQuizResult[];
+  kpiImprovementSummary: Array<{
+    kpiId?: Kpi | string | null;
+    improvementPercentage: number;
+  }>;
+}
+
+export interface ManagerDashboardEntry {
+  employee: UserSummary;
+  completionRate: number;
+  latestImprovement: number;
+}
+
+export interface ManagerDashboard {
+  teamMembers: ManagerDashboardEntry[];
+  topPerformers: ManagerDashboardEntry[];
+  needsSupport: ManagerDashboardEntry[];
+}
+
+export interface AdminDashboard {
+  totals: {
+    users: number;
+    employees: number;
+    managers: number;
+    teams: number;
+    enrollments: number;
+    completedEnrollments: number;
+    performanceRecords: number;
+  };
+  completionRate: number;
+  roleDistribution: Array<{
+    role: UserRole;
+    count: number;
+  }>;
+  enrollmentStatusDistribution: Array<{
+    status: Enrollment['status'];
+    count: number;
+  }>;
+  performanceSummary: {
+    improvedCount: number;
+    stagnantCount: number;
+    declinedCount: number;
+    averageImprovement: number;
+  };
+  managerCoverageRate: number;
+  averageEmployeesPerManager: number;
+  averageMembersPerTeam: number;
+}
+
 export interface DashboardStat {
   label: string;
   value: string | number;

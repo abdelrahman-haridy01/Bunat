@@ -31,7 +31,6 @@ import { IconComponent } from '../../../shared/components';
 
         <div class="hero-grid">
           <div class="hero-copy">
-            <img class="hero-logo" src="assets/bunat-logo.svg" alt="شعار بُناة الكامل" />
             <div class="hero-copy__meta">
               <span class="eyebrow">الفكرة الرئيسية</span>
               <span class="hero-copy__note">من التعلم إلى أثر يُبنى</span>
@@ -89,6 +88,10 @@ import { IconComponent } from '../../../shared/components';
           </aside>
         </div>
       </section>
+
+      <div class="hero-illustration">
+        <img class="hero-logo" src="assets/bunat-logo.svg" alt="شعار بُناة الكامل" />      
+      </div>
 
       <section id="solution-goals" class="section-band">
         <div class="section-heading">
@@ -262,7 +265,7 @@ import { IconComponent } from '../../../shared/components';
         display: block;
         width: min(100%, 28rem);
         height: auto;
-        margin-bottom: 1rem;
+        margin: 0 auto 1rem;
       }
 
       .hero-copy__meta {
