@@ -39,6 +39,18 @@ export class CoursesApiService {
     submitQuizAttempt(id, payload) {
         return this.http.post(`${environment.apiBaseUrl}/lessons/${id}/quiz-attempt`, payload);
     }
+    submitFinalQuizAttempt(courseId, payload) {
+        return this.http.post(`${environment.apiBaseUrl}/courses/${courseId}/final-quiz-attempt`, payload);
+    }
+    downloadCertificate(courseId, userId) {
+        const suffix = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+        return this.http.get(`${environment.apiBaseUrl}/courses/${courseId}/certificate${suffix}`, {
+            responseType: 'blob',
+        });
+    }
+    generateCourseDraft(payload) {
+        return this.http.post(`${environment.apiBaseUrl}/ai/course-drafts`, payload);
+    }
     static { this.ɵfac = function CoursesApiService_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || CoursesApiService)(); }; }
     static { this.ɵprov = /*@__PURE__*/ i0.ɵɵdefineInjectable({ token: CoursesApiService, factory: CoursesApiService.ɵfac, providedIn: 'root' }); }
 }

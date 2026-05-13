@@ -1,4 +1,4 @@
-export type UserRole = 'employee' | 'manager' | 'admin' | 'hr';
+export type UserRole = 'employee' | 'manager' | 'admin' | 'hr' | 'course_manager';
 
 export interface UserSummary {
   _id?: string;
@@ -20,6 +20,14 @@ export interface AuthResponse {
   user: UserSummary;
 }
 
+export interface LessonSlide {
+  id: string;
+  title: string;
+  body: string;
+  mediaUrl?: string | null;
+  notes?: string | null;
+}
+
 export interface Course {
   _id?: string;
   id?: string;
@@ -30,6 +38,9 @@ export interface Course {
   status: 'draft' | 'published' | 'archived';
   skillIds: Array<{ _id?: string; name?: string } | string>;
   kpiIds: Array<{ _id?: string; name?: string } | string>;
+  finalQuiz?: LessonQuiz | null;
+  finalQuizProgress?: FinalQuizProgressSummary | null;
+  certificateEnabled?: boolean;
   lessons?: Lesson[];
 }
 
@@ -71,11 +82,23 @@ export interface Lesson {
   contentType: 'video' | 'article' | 'pdf' | 'quiz' | 'task';
   contentUrl?: string | null;
   contentHtml?: string | null;
+  slides?: LessonSlide[];
   quiz?: LessonQuiz | null;
   order: number;
   durationMinutes: number;
   isRequired: boolean;
   progress?: LessonProgressSummary | null;
+}
+
+export interface FinalQuizProgressSummary {
+  attemptCount: number;
+  lastAttemptAt?: string | null;
+  lastScorePercentage?: number | null;
+  bestScorePercentage?: number | null;
+  bestCorrectAnswersCount?: number | null;
+  questionCount?: number | null;
+  passed: boolean;
+  completedAt?: string | null;
 }
 
 export interface Enrollment {
@@ -89,6 +112,44 @@ export interface Enrollment {
   dueDate?: string | null;
   startedAt?: string | null;
   completedAt?: string | null;
+  finalQuizProgress?: FinalQuizProgressSummary | null;
+}
+
+export interface AiSettings {
+  provider: 'openai';
+  hasApiKey: boolean;
+  maskedApiKey?: string | null;
+  model: string;
+  baseUrl?: string | null;
+  language: string;
+  defaultLessonCount: number;
+  defaultFinalExamQuestionCount: number;
+}
+
+export interface AiCourseDraftRequest {
+  topic: string;
+  targetAudience?: string;
+  learningObjectives?: string[];
+  difficulty: Course['difficulty'];
+  estimatedDurationMinutes: number;
+  lessonCount: number;
+  notes?: string;
+  includeFinalExam?: boolean;
+  finalExamQuestionCount?: number;
+  language?: string;
+}
+
+export interface AiCourseDraftResponse {
+  course: Pick<
+    Course,
+    'title' | 'description' | 'difficulty' | 'estimatedDurationMinutes' | 'status' | 'certificateEnabled'
+  >;
+  lessons: Array<
+    Pick<Lesson, 'title' | 'contentType' | 'durationMinutes' | 'order' | 'isRequired'> & {
+      slides: LessonSlide[];
+    }
+  >;
+  finalQuiz?: LessonQuiz | null;
 }
 
 export interface Kpi {

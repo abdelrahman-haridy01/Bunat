@@ -38,12 +38,20 @@ export class AppShellComponent {
                     { label: 'الفريق', link: '/manager/team', icon: 'team' },
                 ];
             }
+            if (role === 'course_manager') {
+                return [
+                    { label: 'الدورات', link: '/content/courses', icon: 'book-open' },
+                    { label: 'الإعدادات', link: '/content/settings', icon: 'shield' },
+                ];
+            }
             return [
                 { label: 'الرئيسية', link: '/admin/dashboard', icon: 'dashboard' },
                 { label: 'المستخدمون', link: '/admin/users', icon: 'users' },
+                { label: 'الفرق', link: '/admin/teams', icon: 'team' },
                 { label: 'الدورات', link: '/admin/courses', icon: 'book-open' },
                 { label: 'المؤشرات', link: '/admin/kpis', icon: 'target' },
                 { label: 'التكليفات', link: '/admin/assignments', icon: 'calendar' },
+                { label: 'الإعدادات', link: '/admin/settings', icon: 'shield' },
             ];
         }, ...(ngDevMode ? [{ debugName: "navItems" }] : /* istanbul ignore next */ []));
         this.pageTitle = computed(() => this.routeTitle().title ?? 'لوحة التحكم', ...(ngDevMode ? [{ debugName: "pageTitle" }] : /* istanbul ignore next */ []));

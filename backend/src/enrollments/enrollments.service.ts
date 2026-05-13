@@ -2,8 +2,10 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-import { EnrollmentStatus } from 'src/common/enums/domain.enums';
+import { EnrollmentStatus, LessonProgressStatus, PointsSourceType } from 'src/common/enums/domain.enums';
 import { Course, CourseDocument } from 'src/courses/schemas/course.schema';
+import { GamificationService } from 'src/gamification/gamification.service';
+import { LessonProgress, LessonProgressDocument } from 'src/lessons/schemas/lesson-progress.schema';
 import { Lesson, LessonDocument } from 'src/lessons/schemas/lesson.schema';
 import { toObjectId } from 'src/common/utils/object-id.util';
 import { AssignEnrollmentDto } from './dto/assign-enrollment.dto';
@@ -16,6 +18,9 @@ export class EnrollmentsService {
     @InjectModel(Enrollment.name) private readonly enrollmentModel: Model<EnrollmentDocument>,
     @InjectModel(Course.name) private readonly courseModel: Model<CourseDocument>,
     @InjectModel(Lesson.name) private readonly lessonModel: Model<LessonDocument>,
+    @InjectModel(LessonProgress.name)
+    private readonly lessonProgressModel: Model<LessonProgressDocument>,
+    private readonly gamificationService: GamificationService,
   ) {}
 
   findAll() {
@@ -127,6 +132,86 @@ export class EnrollmentsService {
           status,
           startedAt,
           completedAt,
+        },
+        { new: true },
+      )
+      .exec();
+  }
+
+  async syncCourseProgress(id: string, userId: string, courseId: string, startedAt: Date | null) {
+    const normalizedCourseId = toObjectId(courseId);
+    const [course, lessons, completedLessonProgress, enrollment] = await Promise.all([
+      this.courseModel.findById(normalizedCourseId).exec(),
+      this.lessonModel.find({ courseId: normalizedCourseId }).sort({ order: 1 }).exec(),
+      this.lessonProgressModel.find({
+        userId: toObjectId(userId),
+        courseId: normalizedCourseId,
+        status: LessonProgressStatus.Completed,
+      }),
+      this.enrollmentModel.findById(id).exec(),
+    ]);
+
+    if (!course || !enrollment) {
+      throw new NotFoundException('تعذر مزامنة تقدم الدورة');
+    }
+
+    const requiredLessons = lessons.filter((lesson) => lesson.isRequired);
+    const completedRequiredLessons = requiredLessons.every((requiredLesson) =>
+      completedLessonProgress.some(
+        (progress) => progress.lessonId.toString() === requiredLesson._id.toString(),
+      ),
+    );
+
+    const lessonProgressPercentage = lessons.length
+      ? Math.round((completedLessonProgress.length / lessons.length) * 100)
+      : 0;
+    const hasFinalQuiz = !!course.finalQuiz?.questions?.length;
+    const finalQuizPassed = !!enrollment.finalQuizProgress?.passed;
+    const progressPercentage = hasFinalQuiz
+      ? Math.min(100, Math.round(lessonProgressPercentage * 0.9) + (finalQuizPassed ? 10 : 0))
+      : lessonProgressPercentage;
+    const isCompleted = completedRequiredLessons && (!hasFinalQuiz || finalQuizPassed);
+    const completedAt = isCompleted ? enrollment.completedAt ?? new Date() : null;
+    const status = isCompleted ? EnrollmentStatus.Completed : EnrollmentStatus.InProgress;
+    const wasCompleted = enrollment.status === EnrollmentStatus.Completed;
+
+    const updatedEnrollment = await this.enrollmentModel
+      .findByIdAndUpdate(
+        id,
+        {
+          progressPercentage,
+          status,
+          startedAt: startedAt ?? enrollment.startedAt ?? new Date(),
+          completedAt,
+        },
+        { new: true },
+      )
+      .exec();
+
+    if (isCompleted && !wasCompleted) {
+      await this.gamificationService.awardPointsInternal(
+        userId,
+        PointsSourceType.CourseCompleted,
+        courseId,
+        100,
+        'إكمال الدورة التدريبية',
+      );
+    }
+
+    return {
+      success: true,
+      progressPercentage,
+      status,
+      enrollment: updatedEnrollment,
+    };
+  }
+
+  updateFinalQuizProgress(id: string, payload: Enrollment['finalQuizProgress']) {
+    return this.enrollmentModel
+      .findByIdAndUpdate(
+        id,
+        {
+          finalQuizProgress: payload,
         },
         { new: true },
       )

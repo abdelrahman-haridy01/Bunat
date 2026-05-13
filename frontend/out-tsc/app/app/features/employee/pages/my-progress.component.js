@@ -101,7 +101,7 @@ export class MyProgressComponent {
             i0.ɵɵtext(14, "\u0623\u062B\u0631 \u0627\u0644\u062A\u062F\u0631\u064A\u0628 \u0639\u0644\u0649 \u0627\u0644\u0645\u0624\u0634\u0631\u0627\u062A");
             i0.ɵɵelementEnd();
             i0.ɵɵelementStart(15, "p", 6);
-            i0.ɵɵtext(16, "\u064A\u0639\u0631\u0636 \u0642\u064A\u0645 \u0645\u0627 \u0642\u0628\u0644 \u0627\u0644\u062A\u062F\u0631\u064A\u0628 \u0648\u0645\u0627 \u0628\u0639\u062F\u0647 \u0648\u0646\u0633\u0628\u0629 \u0627\u0644\u062A\u062D\u0633\u0646.");
+            i0.ɵɵtext(16, "\u064A\u0648\u0636\u062D \u0642\u064A\u0645 \u0645\u0627 \u0642\u0628\u0644 \u0627\u0644\u062A\u062F\u0631\u064A\u0628 \u0648\u0645\u0627 \u0628\u0639\u062F\u0647 \u0648\u0646\u0633\u0628\u0629 \u0627\u0644\u062A\u062D\u0633\u0646.");
             i0.ɵɵelementEnd()()();
             i0.ɵɵelement(17, "app-data-table", 8);
             i0.ɵɵelementEnd();
@@ -109,7 +109,7 @@ export class MyProgressComponent {
             i0.ɵɵtext(22, "\u0646\u062A\u0627\u0626\u062C \u0627\u0644\u0627\u062E\u062A\u0628\u0627\u0631\u0627\u062A");
             i0.ɵɵelementEnd();
             i0.ɵɵelementStart(23, "p", 6);
-            i0.ɵɵtext(24, "\u064A\u0639\u0631\u0636 \u0623\u0641\u0636\u0644 \u0646\u062A\u064A\u062C\u0629 \u0648\u062D\u0627\u0644\u0629 \u0627\u0644\u0627\u062C\u062A\u064A\u0627\u0632 \u0644\u0643\u0644 \u0627\u062E\u062A\u0628\u0627\u0631 \u0623\u062A\u0645\u0645\u062A\u0647.");
+            i0.ɵɵtext(24, "\u064A\u0648\u0636\u062D \u0623\u0641\u0636\u0644 \u0646\u062A\u064A\u062C\u0629 \u0648\u062D\u0627\u0644\u0629 \u0627\u0644\u0627\u062C\u062A\u064A\u0627\u0632 \u0644\u0643\u0644 \u0627\u062E\u062A\u0628\u0627\u0631 \u0623\u062A\u0645\u0645\u062A\u0647.");
             i0.ɵɵelementEnd()()();
             i0.ɵɵelement(25, "app-data-table", 8);
             i0.ɵɵelementEnd()();
@@ -169,7 +169,7 @@ export class MyProgressComponent {
         <div class="panel-header">
           <div>
             <h2 class="section-title">أثر التدريب على المؤشرات</h2>
-            <p class="section-subtitle">يعرض قيم ما قبل التدريب وما بعده ونسبة التحسن.</p>
+            <p class="section-subtitle">يوضح قيم ما قبل التدريب وما بعده ونسبة التحسن.</p>
           </div>
         </div>
 
@@ -180,7 +180,7 @@ export class MyProgressComponent {
         <div class="panel-header">
           <div>
             <h2 class="section-title">نتائج الاختبارات</h2>
-            <p class="section-subtitle">يعرض أفضل نتيجة وحالة الاجتياز لكل اختبار أتممته.</p>
+            <p class="section-subtitle">يوضح أفضل نتيجة وحالة الاجتياز لكل اختبار أتممته.</p>
           </div>
         </div>
 

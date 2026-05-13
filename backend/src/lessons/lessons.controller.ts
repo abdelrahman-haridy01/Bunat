@@ -16,7 +16,7 @@ import { LessonsService } from './lessons.service';
 export class LessonsController {
   constructor(private readonly lessonsService: LessonsService) {}
 
-  @Roles(UserRole.Employee, UserRole.Manager, UserRole.Admin, UserRole.Hr)
+  @Roles(UserRole.Employee, UserRole.Manager, UserRole.Admin, UserRole.Hr, UserRole.CourseManager)
   @Get('courses/:courseId/lessons')
   findByCourse(
     @Param('courseId') courseId: string,
@@ -25,19 +25,19 @@ export class LessonsController {
     return this.lessonsService.findByCourse(courseId, user);
   }
 
-  @Roles(UserRole.Admin, UserRole.Hr)
+  @Roles(UserRole.Admin, UserRole.Hr, UserRole.CourseManager)
   @Post('lessons')
   create(@Body() createLessonDto: CreateLessonDto) {
     return this.lessonsService.create(createLessonDto);
   }
 
-  @Roles(UserRole.Admin, UserRole.Hr)
+  @Roles(UserRole.Admin, UserRole.Hr, UserRole.CourseManager)
   @Patch('lessons/:id')
   update(@Param('id') id: string, @Body() updateLessonDto: UpdateLessonDto) {
     return this.lessonsService.update(id, updateLessonDto);
   }
 
-  @Roles(UserRole.Admin, UserRole.Hr)
+  @Roles(UserRole.Admin, UserRole.Hr, UserRole.CourseManager)
   @Delete('lessons/:id')
   remove(@Param('id') id: string) {
     return this.lessonsService.remove(id);

@@ -89,7 +89,7 @@ function DataTableComponent_table_1_Template(rf, ctx) { if (rf & 1) {
 } }
 function DataTableComponent_ng_template_2_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵelementStart(0, "div", 13);
-    i0.ɵɵtext(1, "\u0644\u0627 \u062A\u0648\u062C\u062F \u0633\u062C\u0644\u0627\u062A \u0644\u0639\u0631\u0636\u0647\u0627 \u062D\u0627\u0644\u064A\u0627\u064B.");
+    i0.ɵɵtext(1, "\u0644\u0627 \u062A\u0648\u062C\u062F \u0633\u062C\u0644\u0627\u062A \u0645\u062A\u0627\u062D\u0629 \u062D\u0627\u0644\u064A\u0627\u064B.");
     i0.ɵɵelementEnd();
 } }
 export class DataTableComponent {
@@ -154,7 +154,7 @@ export class DataTableComponent {
         </tbody>
       </table>
       <ng-template #emptyTemplate>
-        <div class="empty-text">لا توجد سجلات لعرضها حالياً.</div>
+        <div class="empty-text">لا توجد سجلات متاحة حالياً.</div>
       </ng-template>
     </div>
   `, changeDetection: ChangeDetectionStrategy.OnPush, styles: ["\n      .table-wrap {\n        overflow: auto;\n      }\n\n      table {\n        width: 100%;\n        border-collapse: collapse;\n      }\n\n      th,\n      td {\n        padding: 1rem;\n        text-align: right;\n        border-bottom: 1px solid var(--color-neutral-200);\n      }\n\n      th {\n        color: var(--color-secondary-paragraph);\n        font-size: 0.9rem;\n        font-weight: 600;\n        background: var(--color-neutral-50);\n      }\n\n      .empty-text {\n        padding: 1.5rem;\n        color: var(--color-secondary-paragraph);\n      }\n\n      .actions-cell {\n        width: 1%;\n        white-space: nowrap;\n      }\n\n      .table-actions {\n        display: flex;\n        justify-content: flex-start;\n        gap: 0.5rem;\n      }\n\n      .table-action {\n        border: 0;\n        border-radius: 999px;\n        padding: 0.65rem 0.9rem;\n        background: linear-gradient(135deg, var(--color-primary-default), #1a7e53);\n        color: var(--color-oncolor-primary);\n        cursor: pointer;\n      }\n\n      .table-action.secondary {\n        background: var(--color-neutral-100);\n        color: var(--color-display);\n      }\n\n      .table-action.ghost {\n        background: transparent;\n        color: var(--color-secondary-default);\n        border: 1px solid rgba(15, 76, 129, 0.2);\n      }\n\n      .table-action.danger {\n        background: rgba(180, 35, 24, 0.1);\n        color: var(--color-error-default);\n        border: 1px solid rgba(180, 35, 24, 0.18);\n      }\n    "] }]

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 import { DataTableComponent, DialogComponent, IconComponent } from '../../../shared/components';
 import { LookupsApiService } from '../../../core/services/lookups-api.service';
 import { UsersApiService } from '../../../core/services/users-api.service';
@@ -12,7 +13,7 @@ import * as i2 from "@angular/forms";
 const _c0 = ["createDialog"];
 const _c1 = ["deleteDialog"];
 function UsersManagementComponent_div_29_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "div", 43);
+    i0.ɵɵelementStart(0, "div", 44);
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
 } if (rf & 2) {
@@ -21,7 +22,7 @@ function UsersManagementComponent_div_29_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵtextInterpolate1(" ", ctx_r0.getVisibleErrorMessage(ctx_r0.form.controls.fullName, ctx_r0.validationMessages.fullName), " ");
 } }
 function UsersManagementComponent_div_34_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "div", 43);
+    i0.ɵɵelementStart(0, "div", 44);
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
 } if (rf & 2) {
@@ -30,7 +31,7 @@ function UsersManagementComponent_div_34_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵtextInterpolate1(" ", ctx_r0.getVisibleErrorMessage(ctx_r0.form.controls.email, ctx_r0.validationMessages.email), " ");
 } }
 function UsersManagementComponent_div_39_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "div", 43);
+    i0.ɵɵelementStart(0, "div", 44);
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
 } if (rf & 2) {
@@ -44,7 +45,7 @@ function UsersManagementComponent_div_40_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵelementEnd();
 } }
 function UsersManagementComponent_div_45_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "div", 43);
+    i0.ɵɵelementStart(0, "div", 44);
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
 } if (rf & 2) {
@@ -52,8 +53,8 @@ function UsersManagementComponent_div_45_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵadvance();
     i0.ɵɵtextInterpolate1(" ", ctx_r0.getVisibleErrorMessage(ctx_r0.form.controls.jobTitle, ctx_r0.validationMessages.jobTitle), " ");
 } }
-function UsersManagementComponent_div_58_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "div", 43);
+function UsersManagementComponent_div_60_Template(rf, ctx) { if (rf & 1) {
+    i0.ɵɵelementStart(0, "div", 44);
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
 } if (rf & 2) {
@@ -61,8 +62,8 @@ function UsersManagementComponent_div_58_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵadvance();
     i0.ɵɵtextInterpolate1(" ", ctx_r0.getVisibleErrorMessage(ctx_r0.form.controls.role, ctx_r0.validationMessages.role), " ");
 } }
-function UsersManagementComponent_option_65_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "option", 44);
+function UsersManagementComponent_option_67_Template(rf, ctx) { if (rf & 1) {
+    i0.ɵɵelementStart(0, "option", 45);
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
 } if (rf & 2) {
@@ -71,8 +72,8 @@ function UsersManagementComponent_option_65_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵadvance();
     i0.ɵɵtextInterpolate(department_r2.name);
 } }
-function UsersManagementComponent_div_74_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "div", 43);
+function UsersManagementComponent_div_76_Template(rf, ctx) { if (rf & 1) {
+    i0.ɵɵelementStart(0, "div", 44);
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
 } if (rf & 2) {
@@ -80,7 +81,7 @@ function UsersManagementComponent_div_74_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵadvance();
     i0.ɵɵtextInterpolate1(" ", ctx_r0.getVisibleErrorMessage(ctx_r0.form.controls.status, ctx_r0.validationMessages.status), " ");
 } }
-function UsersManagementComponent_strong_85_Template(rf, ctx) { if (rf & 1) {
+function UsersManagementComponent_strong_87_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵelementStart(0, "strong");
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
@@ -95,6 +96,7 @@ export class UsersManagementComponent {
         this.usersApi = inject(UsersApiService);
         this.lookupsApi = inject(LookupsApiService);
         this.authService = inject(AuthService);
+        this.router = inject(Router);
         this.createDialog = viewChild.required('createDialog');
         this.deleteDialog = viewChild.required('deleteDialog');
         this.users = signal([], ...(ngDevMode ? [{ debugName: "users" }] : /* istanbul ignore next */ []));
@@ -135,6 +137,7 @@ export class UsersManagementComponent {
             { key: 'statusLabel', label: 'الحالة' },
         ];
         this.actions = [
+            { key: 'report', label: 'التقرير', icon: 'eye', tone: 'ghost' },
             { key: 'edit', label: 'تعديل', icon: 'user', tone: 'ghost' },
             { key: 'delete', label: 'حذف', icon: 'alert', tone: 'danger' },
         ];
@@ -179,6 +182,10 @@ export class UsersManagementComponent {
         }
         const user = this.users().find((item) => (item._id || item.id) === event.row['userId']);
         if (!user) {
+            return;
+        }
+        if (event.key === 'report') {
+            this.router.navigate(['/admin/employees', event.row['userId'], 'report']);
             return;
         }
         if (event.key === 'edit') {
@@ -313,7 +320,13 @@ export class UsersManagementComponent {
         this.form.controls.password.updateValueAndValidity({ emitEvent: false });
     }
     roleLabel(role) {
-        return { employee: 'موظف', manager: 'مدير', admin: 'مدير نظام', hr: 'موارد بشرية' }[role] || role;
+        return {
+            employee: 'موظف',
+            manager: 'مدير',
+            admin: 'مدير نظام',
+            hr: 'موارد بشرية',
+            course_manager: 'مدير محتوى',
+        }[role] || role;
     }
     statusLabel(status) {
         return { active: 'نشط', inactive: 'غير نشط' }[status || 'active'] || status || 'نشط';
@@ -323,7 +336,7 @@ export class UsersManagementComponent {
             i0.ɵɵviewQuerySignal(ctx.createDialog, _c0, 5)(ctx.deleteDialog, _c1, 5);
         } if (rf & 2) {
             i0.ɵɵqueryAdvance(2);
-        } }, decls: 92, vars: 34, consts: [["createDialog", ""], ["deleteDialog", ""], [1, "page-grid"], [1, "card", "panel"], [1, "panel-header"], [1, "section-title", "label-with-icon"], [1, "icon-badge"], ["name", "users", 3, "size"], [1, "section-subtitle"], [1, "panel-actions"], ["type", "button", 1, "btn", "btn-primary", 3, "click"], [1, "btn-content"], ["name", "user-plus", 3, "size"], [1, "section-title"], [3, "actionClicked", "columns", "rows", "actions"], [3, "title", "subtitle", "icon"], ["novalidate", "", 1, "dialog-form", 3, "ngSubmit", "formGroup"], [1, "form-grid"], [1, "field"], ["formControlName", "fullName"], ["class", "field-error", 4, "ngIf"], ["formControlName", "email"], ["type", "password", "formControlName", "password"], ["class", "section-subtitle", 4, "ngIf"], ["formControlName", "jobTitle"], ["formControlName", "role"], ["value", "employee"], ["value", "manager"], ["value", "admin"], ["value", "hr"], ["formControlName", "departmentId"], ["value", ""], [3, "value", 4, "ngFor", "ngForOf"], ["formControlName", "status"], ["value", "active"], ["value", "inactive"], [1, "dialog-actions"], ["type", "button", 1, "btn", "btn-ghost", 3, "click"], ["type", "submit", 1, "btn", "btn-primary", 3, "disabled"], ["title", "\u062A\u0623\u0643\u064A\u062F \u062D\u0630\u0641 \u0627\u0644\u0645\u0633\u062A\u062E\u062F\u0645", "subtitle", "\u0633\u064A\u062A\u0645 \u062D\u0630\u0641 \u0627\u0644\u062D\u0633\u0627\u0628 \u0646\u0647\u0627\u0626\u064A\u0627\u064B \u0628\u0639\u062F \u0627\u0644\u062A\u0623\u0643\u064A\u062F.", "icon", "alert"], [1, "message-box", "error"], [4, "ngIf"], ["type", "button", 1, "btn", "btn-danger", 3, "click", "disabled"], [1, "field-error"], [3, "value"]], template: function UsersManagementComponent_Template(rf, ctx) { if (rf & 1) {
+        } }, decls: 94, vars: 34, consts: [["createDialog", ""], ["deleteDialog", ""], [1, "page-grid"], [1, "card", "panel"], [1, "panel-header"], [1, "section-title", "label-with-icon"], [1, "icon-badge"], ["name", "users", 3, "size"], [1, "section-subtitle"], [1, "panel-actions"], ["type", "button", 1, "btn", "btn-primary", 3, "click"], [1, "btn-content"], ["name", "user-plus", 3, "size"], [1, "section-title"], [3, "actionClicked", "columns", "rows", "actions"], [3, "title", "subtitle", "icon"], ["novalidate", "", 1, "dialog-form", 3, "ngSubmit", "formGroup"], [1, "form-grid"], [1, "field"], ["formControlName", "fullName"], ["class", "field-error", 4, "ngIf"], ["formControlName", "email"], ["type", "password", "formControlName", "password"], ["class", "section-subtitle", 4, "ngIf"], ["formControlName", "jobTitle"], ["formControlName", "role"], ["value", "employee"], ["value", "manager"], ["value", "admin"], ["value", "hr"], ["value", "course_manager"], ["formControlName", "departmentId"], ["value", ""], [3, "value", 4, "ngFor", "ngForOf"], ["formControlName", "status"], ["value", "active"], ["value", "inactive"], [1, "dialog-actions"], ["type", "button", 1, "btn", "btn-ghost", 3, "click"], ["type", "submit", 1, "btn", "btn-primary", 3, "disabled"], ["title", "\u062A\u0623\u0643\u064A\u062F \u062D\u0630\u0641 \u0627\u0644\u0645\u0633\u062A\u062E\u062F\u0645", "subtitle", "\u0633\u064A\u062A\u0645 \u062D\u0630\u0641 \u0627\u0644\u062D\u0633\u0627\u0628 \u0646\u0647\u0627\u0626\u064A\u0627\u064B \u0628\u0639\u062F \u0627\u0644\u062A\u0623\u0643\u064A\u062F.", "icon", "alert"], [1, "message-box", "error"], [4, "ngIf"], ["type", "button", 1, "btn", "btn-danger", 3, "click", "disabled"], [1, "field-error"], [3, "value"]], template: function UsersManagementComponent_Template(rf, ctx) { if (rf & 1) {
             i0.ɵɵelementStart(0, "section", 2)(1, "article", 3)(2, "div", 4)(3, "div")(4, "h2", 5)(5, "span", 6);
             i0.ɵɵelement(6, "app-icon", 7);
             i0.ɵɵelementEnd();
@@ -386,47 +399,50 @@ export class UsersManagementComponent {
             i0.ɵɵelementEnd();
             i0.ɵɵelementStart(56, "option", 29);
             i0.ɵɵtext(57, "\u0645\u0648\u0627\u0631\u062F \u0628\u0634\u0631\u064A\u0629");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(58, "option", 30);
+            i0.ɵɵtext(59, "\u0645\u062F\u064A\u0631 \u0645\u062D\u062A\u0648\u0649");
             i0.ɵɵelementEnd()();
-            i0.ɵɵtemplate(58, UsersManagementComponent_div_58_Template, 2, 1, "div", 20);
+            i0.ɵɵtemplate(60, UsersManagementComponent_div_60_Template, 2, 1, "div", 20);
             i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(59, "div", 18)(60, "label");
-            i0.ɵɵtext(61, "\u0627\u0644\u0642\u0633\u0645");
+            i0.ɵɵelementStart(61, "div", 18)(62, "label");
+            i0.ɵɵtext(63, "\u0627\u0644\u0642\u0633\u0645");
             i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(62, "select", 30)(63, "option", 31);
-            i0.ɵɵtext(64, "\u0628\u062F\u0648\u0646");
+            i0.ɵɵelementStart(64, "select", 31)(65, "option", 32);
+            i0.ɵɵtext(66, "\u0628\u062F\u0648\u0646");
             i0.ɵɵelementEnd();
-            i0.ɵɵtemplate(65, UsersManagementComponent_option_65_Template, 2, 2, "option", 32);
+            i0.ɵɵtemplate(67, UsersManagementComponent_option_67_Template, 2, 2, "option", 33);
             i0.ɵɵelementEnd()();
-            i0.ɵɵelementStart(66, "div", 18)(67, "label");
-            i0.ɵɵtext(68, "\u0627\u0644\u062D\u0627\u0644\u0629");
+            i0.ɵɵelementStart(68, "div", 18)(69, "label");
+            i0.ɵɵtext(70, "\u0627\u0644\u062D\u0627\u0644\u0629");
             i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(69, "select", 33)(70, "option", 34);
-            i0.ɵɵtext(71, "\u0646\u0634\u0637");
+            i0.ɵɵelementStart(71, "select", 34)(72, "option", 35);
+            i0.ɵɵtext(73, "\u0646\u0634\u0637");
             i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(72, "option", 35);
-            i0.ɵɵtext(73, "\u063A\u064A\u0631 \u0646\u0634\u0637");
+            i0.ɵɵelementStart(74, "option", 36);
+            i0.ɵɵtext(75, "\u063A\u064A\u0631 \u0646\u0634\u0637");
             i0.ɵɵelementEnd()();
-            i0.ɵɵtemplate(74, UsersManagementComponent_div_74_Template, 2, 1, "div", 20);
+            i0.ɵɵtemplate(76, UsersManagementComponent_div_76_Template, 2, 1, "div", 20);
             i0.ɵɵelementEnd()();
-            i0.ɵɵelementStart(75, "div", 36)(76, "button", 37);
-            i0.ɵɵlistener("click", function UsersManagementComponent_Template_button_click_76_listener() { return ctx.closeCreateDialog(); });
-            i0.ɵɵtext(77, "\u0625\u0644\u063A\u0627\u0621");
+            i0.ɵɵelementStart(77, "div", 37)(78, "button", 38);
+            i0.ɵɵlistener("click", function UsersManagementComponent_Template_button_click_78_listener() { return ctx.closeCreateDialog(); });
+            i0.ɵɵtext(79, "\u0625\u0644\u063A\u0627\u0621");
             i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(78, "button", 38);
-            i0.ɵɵtext(79);
+            i0.ɵɵelementStart(80, "button", 39);
+            i0.ɵɵtext(81);
             i0.ɵɵelementEnd()()()();
-            i0.ɵɵelementStart(80, "app-dialog", 39, 1)(82, "div", 2)(83, "div", 40);
-            i0.ɵɵtext(84, " \u0647\u0644 \u0623\u0646\u062A \u0645\u062A\u0623\u0643\u062F \u0645\u0646 \u062D\u0630\u0641 \u0627\u0644\u0645\u0633\u062A\u062E\u062F\u0645 ");
-            i0.ɵɵtemplate(85, UsersManagementComponent_strong_85_Template, 2, 1, "strong", 41);
-            i0.ɵɵtext(86, " \u061F \u0644\u0627 \u064A\u0645\u0643\u0646 \u0627\u0644\u062A\u0631\u0627\u062C\u0639 \u0639\u0646 \u0647\u0630\u0627 \u0627\u0644\u0625\u062C\u0631\u0627\u0621. ");
+            i0.ɵɵelementStart(82, "app-dialog", 40, 1)(84, "div", 2)(85, "div", 41);
+            i0.ɵɵtext(86, " \u0647\u0644 \u0623\u0646\u062A \u0645\u062A\u0623\u0643\u062F \u0645\u0646 \u062D\u0630\u0641 \u0627\u0644\u0645\u0633\u062A\u062E\u062F\u0645 ");
+            i0.ɵɵtemplate(87, UsersManagementComponent_strong_87_Template, 2, 1, "strong", 42);
+            i0.ɵɵtext(88, " \u061F \u0644\u0627 \u064A\u0645\u0643\u0646 \u0627\u0644\u062A\u0631\u0627\u062C\u0639 \u0639\u0646 \u0647\u0630\u0627 \u0627\u0644\u0625\u062C\u0631\u0627\u0621. ");
             i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(87, "div", 36)(88, "button", 37);
-            i0.ɵɵlistener("click", function UsersManagementComponent_Template_button_click_88_listener() { return ctx.closeDeleteDialog(); });
-            i0.ɵɵtext(89, "\u0625\u0644\u063A\u0627\u0621");
+            i0.ɵɵelementStart(89, "div", 37)(90, "button", 38);
+            i0.ɵɵlistener("click", function UsersManagementComponent_Template_button_click_90_listener() { return ctx.closeDeleteDialog(); });
+            i0.ɵɵtext(91, "\u0625\u0644\u063A\u0627\u0621");
             i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(90, "button", 42);
-            i0.ɵɵlistener("click", function UsersManagementComponent_Template_button_click_90_listener() { return ctx.confirmDelete(); });
-            i0.ɵɵtext(91);
+            i0.ɵɵelementStart(92, "button", 43);
+            i0.ɵɵlistener("click", function UsersManagementComponent_Template_button_click_92_listener() { return ctx.confirmDelete(); });
+            i0.ɵɵtext(93);
             i0.ɵɵelementEnd()()()()();
         } if (rf & 2) {
             i0.ɵɵadvance(6);
@@ -459,7 +475,7 @@ export class UsersManagementComponent {
             i0.ɵɵproperty("ngIf", ctx.hasVisibleError(ctx.form.controls.jobTitle));
             i0.ɵɵadvance(4);
             i0.ɵɵclassProp("is-invalid", ctx.hasVisibleError(ctx.form.controls.role));
-            i0.ɵɵadvance(9);
+            i0.ɵɵadvance(11);
             i0.ɵɵproperty("ngIf", ctx.hasVisibleError(ctx.form.controls.role));
             i0.ɵɵadvance(7);
             i0.ɵɵproperty("ngForOf", ctx.departments());
@@ -561,6 +577,7 @@ export class UsersManagementComponent {
                 <option value="manager">مدير</option>
                 <option value="admin">مدير نظام</option>
                 <option value="hr">موارد بشرية</option>
+                <option value="course_manager">مدير محتوى</option>
               </select>
               <div class="field-error" *ngIf="hasVisibleError(form.controls.role)">
                 {{ getVisibleErrorMessage(form.controls.role, validationMessages.role) }}
@@ -618,5 +635,5 @@ export class UsersManagementComponent {
     </section>
   `, changeDetection: ChangeDetectionStrategy.OnPush, styles: [".panel { padding:1.5rem; }"] }]
     }], null, { createDialog: [{ type: i0.ViewChild, args: ['createDialog', { isSignal: true }] }], deleteDialog: [{ type: i0.ViewChild, args: ['deleteDialog', { isSignal: true }] }] }); })();
-(() => { (typeof ngDevMode === "undefined" || ngDevMode) && i0.ɵsetClassDebugInfo(UsersManagementComponent, { className: "UsersManagementComponent", filePath: "src/app/features/admin/pages/users-management.component.ts", lineNumber: 160 }); })();
+(() => { (typeof ngDevMode === "undefined" || ngDevMode) && i0.ɵsetClassDebugInfo(UsersManagementComponent, { className: "UsersManagementComponent", filePath: "src/app/features/admin/pages/users-management.component.ts", lineNumber: 162 }); })();
 //# sourceMappingURL=users-management.component.js.map

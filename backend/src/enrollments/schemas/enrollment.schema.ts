@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 
 import { EnrollmentStatus } from 'src/common/enums/domain.enums';
+import { FinalQuizProgress, FinalQuizProgressSchema } from './final-quiz-progress.schema';
 
 export type EnrollmentDocument = HydratedDocument<Enrollment>;
 
@@ -33,6 +34,9 @@ export class Enrollment {
 
   @Prop({ type: Date, default: null })
   dueDate!: Date | null;
+
+  @Prop({ type: FinalQuizProgressSchema, default: null })
+  finalQuizProgress!: FinalQuizProgress | null;
 }
 
 export const EnrollmentSchema = SchemaFactory.createForClass(Enrollment);

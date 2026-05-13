@@ -2,7 +2,9 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal, viewChild
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { finalize, forkJoin, switchMap } from 'rxjs';
 import { CoursesApiService } from '../../../core/services/courses-api.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { LookupsApiService } from '../../../core/services/lookups-api.service';
 import { DataTableComponent, DialogComponent, IconComponent } from '../../../shared/components';
 import { clearControlState, getVisibleErrorMessage, hasVisibleError, touchAllControls, } from '../../../shared/utils/form-validation';
@@ -10,10 +12,11 @@ import * as i0 from "@angular/core";
 import * as i1 from "@angular/common";
 import * as i2 from "@angular/forms";
 const _c0 = ["courseDialog"];
-const _c1 = ["lessonDialog"];
-const _c2 = ["deleteDialog"];
-function CoursesManagementComponent_div_34_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "div", 61);
+const _c1 = ["aiDialog"];
+const _c2 = ["lessonDialog"];
+const _c3 = ["deleteDialog"];
+function CoursesManagementComponent_div_39_Template(rf, ctx) { if (rf & 1) {
+    i0.ɵɵelementStart(0, "div", 73);
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
 } if (rf & 2) {
@@ -21,8 +24,8 @@ function CoursesManagementComponent_div_34_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵadvance();
     i0.ɵɵtextInterpolate1(" ", ctx_r0.getVisibleErrorMessage(ctx_r0.courseForm.controls.title, ctx_r0.courseValidationMessages.title), " ");
 } }
-function CoursesManagementComponent_div_45_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "div", 61);
+function CoursesManagementComponent_div_50_Template(rf, ctx) { if (rf & 1) {
+    i0.ɵɵelementStart(0, "div", 73);
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
 } if (rf & 2) {
@@ -30,8 +33,8 @@ function CoursesManagementComponent_div_45_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵadvance();
     i0.ɵɵtextInterpolate1(" ", ctx_r0.getVisibleErrorMessage(ctx_r0.courseForm.controls.difficulty, ctx_r0.courseValidationMessages.difficulty), " ");
 } }
-function CoursesManagementComponent_div_50_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "div", 61);
+function CoursesManagementComponent_div_55_Template(rf, ctx) { if (rf & 1) {
+    i0.ɵɵelementStart(0, "div", 73);
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
 } if (rf & 2) {
@@ -39,8 +42,8 @@ function CoursesManagementComponent_div_50_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵadvance();
     i0.ɵɵtextInterpolate1(" ", ctx_r0.getVisibleErrorMessage(ctx_r0.courseForm.controls.estimatedDurationMinutes, ctx_r0.courseValidationMessages.estimatedDurationMinutes), " ");
 } }
-function CoursesManagementComponent_option_55_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "option", 62);
+function CoursesManagementComponent_div_56_option_4_Template(rf, ctx) { if (rf & 1) {
+    i0.ɵɵelementStart(0, "option", 75);
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
 } if (rf & 2) {
@@ -49,8 +52,20 @@ function CoursesManagementComponent_option_55_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵadvance();
     i0.ɵɵtextInterpolate(skill_r2.name);
 } }
-function CoursesManagementComponent_option_60_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "option", 62);
+function CoursesManagementComponent_div_56_Template(rf, ctx) { if (rf & 1) {
+    i0.ɵɵelementStart(0, "div", 22)(1, "label");
+    i0.ɵɵtext(2, "\u0627\u0644\u0645\u0647\u0627\u0631\u0627\u062A");
+    i0.ɵɵelementEnd();
+    i0.ɵɵelementStart(3, "select", 74);
+    i0.ɵɵtemplate(4, CoursesManagementComponent_div_56_option_4_Template, 2, 2, "option", 55);
+    i0.ɵɵelementEnd()();
+} if (rf & 2) {
+    const ctx_r0 = i0.ɵɵnextContext();
+    i0.ɵɵadvance(4);
+    i0.ɵɵproperty("ngForOf", ctx_r0.skills());
+} }
+function CoursesManagementComponent_div_57_option_4_Template(rf, ctx) { if (rf & 1) {
+    i0.ɵɵelementStart(0, "option", 75);
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
 } if (rf & 2) {
@@ -59,8 +74,20 @@ function CoursesManagementComponent_option_60_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵadvance();
     i0.ɵɵtextInterpolate(kpi_r3.name);
 } }
-function CoursesManagementComponent_div_75_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "div", 61);
+function CoursesManagementComponent_div_57_Template(rf, ctx) { if (rf & 1) {
+    i0.ɵɵelementStart(0, "div", 22)(1, "label");
+    i0.ɵɵtext(2, "\u0627\u0644\u0645\u0624\u0634\u0631\u0627\u062A");
+    i0.ɵɵelementEnd();
+    i0.ɵɵelementStart(3, "select", 76);
+    i0.ɵɵtemplate(4, CoursesManagementComponent_div_57_option_4_Template, 2, 2, "option", 55);
+    i0.ɵɵelementEnd()();
+} if (rf & 2) {
+    const ctx_r0 = i0.ɵɵnextContext();
+    i0.ɵɵadvance(4);
+    i0.ɵɵproperty("ngForOf", ctx_r0.kpis());
+} }
+function CoursesManagementComponent_div_76_Template(rf, ctx) { if (rf & 1) {
+    i0.ɵɵelementStart(0, "div", 73);
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
 } if (rf & 2) {
@@ -68,18 +95,37 @@ function CoursesManagementComponent_div_75_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵadvance();
     i0.ɵɵtextInterpolate1(" ", ctx_r0.getVisibleErrorMessage(ctx_r0.courseForm.controls.description, ctx_r0.courseValidationMessages.description), " ");
 } }
-function CoursesManagementComponent_option_89_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "option", 62);
+function CoursesManagementComponent_div_128_Template(rf, ctx) { if (rf & 1) {
+    i0.ɵɵelementStart(0, "div", 77)(1, "strong");
+    i0.ɵɵtext(2);
+    i0.ɵɵelementEnd();
+    i0.ɵɵelementStart(3, "p");
+    i0.ɵɵtext(4);
+    i0.ɵɵelementEnd();
+    i0.ɵɵelementStart(5, "p");
+    i0.ɵɵtext(6);
+    i0.ɵɵelementEnd()();
+} if (rf & 2) {
+    const draft_r4 = ctx.ngIf;
+    i0.ɵɵadvance(2);
+    i0.ɵɵtextInterpolate(draft_r4.course.title);
+    i0.ɵɵadvance(2);
+    i0.ɵɵtextInterpolate(draft_r4.course.description);
+    i0.ɵɵadvance(2);
+    i0.ɵɵtextInterpolate2("", draft_r4.lessons.length, " \u062F\u0631\u0648\u0633 \u2022 ", (draft_r4.finalQuiz == null ? null : draft_r4.finalQuiz.questions == null ? null : draft_r4.finalQuiz.questions.length) || 0, " \u0623\u0633\u0626\u0644\u0629 \u0646\u0647\u0627\u0626\u064A\u0629");
+} }
+function CoursesManagementComponent_option_144_Template(rf, ctx) { if (rf & 1) {
+    i0.ɵɵelementStart(0, "option", 75);
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
 } if (rf & 2) {
-    const course_r4 = ctx.$implicit;
-    i0.ɵɵproperty("value", course_r4._id || course_r4.id);
+    const course_r5 = ctx.$implicit;
+    i0.ɵɵproperty("value", course_r5._id || course_r5.id);
     i0.ɵɵadvance();
-    i0.ɵɵtextInterpolate(course_r4.title);
+    i0.ɵɵtextInterpolate(course_r5.title);
 } }
-function CoursesManagementComponent_div_90_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "div", 61);
+function CoursesManagementComponent_div_145_Template(rf, ctx) { if (rf & 1) {
+    i0.ɵɵelementStart(0, "div", 73);
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
 } if (rf & 2) {
@@ -87,8 +133,8 @@ function CoursesManagementComponent_div_90_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵadvance();
     i0.ɵɵtextInterpolate1(" ", ctx_r0.getVisibleErrorMessage(ctx_r0.lessonForm.controls.courseId, ctx_r0.lessonValidationMessages.courseId), " ");
 } }
-function CoursesManagementComponent_div_95_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "div", 61);
+function CoursesManagementComponent_div_150_Template(rf, ctx) { if (rf & 1) {
+    i0.ɵɵelementStart(0, "div", 73);
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
 } if (rf & 2) {
@@ -96,8 +142,8 @@ function CoursesManagementComponent_div_95_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵadvance();
     i0.ɵɵtextInterpolate1(" ", ctx_r0.getVisibleErrorMessage(ctx_r0.lessonForm.controls.title, ctx_r0.lessonValidationMessages.title), " ");
 } }
-function CoursesManagementComponent_div_108_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "div", 61);
+function CoursesManagementComponent_div_163_Template(rf, ctx) { if (rf & 1) {
+    i0.ɵɵelementStart(0, "div", 73);
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
 } if (rf & 2) {
@@ -105,8 +151,8 @@ function CoursesManagementComponent_div_108_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵadvance();
     i0.ɵɵtextInterpolate1(" ", ctx_r0.getVisibleErrorMessage(ctx_r0.lessonForm.controls.contentType, ctx_r0.lessonValidationMessages.contentType), " ");
 } }
-function CoursesManagementComponent_div_113_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "div", 61);
+function CoursesManagementComponent_div_168_Template(rf, ctx) { if (rf & 1) {
+    i0.ɵɵelementStart(0, "div", 73);
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
 } if (rf & 2) {
@@ -114,8 +160,8 @@ function CoursesManagementComponent_div_113_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵadvance();
     i0.ɵɵtextInterpolate1(" ", ctx_r0.getVisibleErrorMessage(ctx_r0.lessonForm.controls.order, ctx_r0.lessonValidationMessages.order), " ");
 } }
-function CoursesManagementComponent_div_118_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "div", 61);
+function CoursesManagementComponent_div_173_Template(rf, ctx) { if (rf & 1) {
+    i0.ɵɵelementStart(0, "div", 73);
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
 } if (rf & 2) {
@@ -123,17 +169,17 @@ function CoursesManagementComponent_div_118_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵadvance();
     i0.ɵɵtextInterpolate1(" ", ctx_r0.getVisibleErrorMessage(ctx_r0.lessonForm.controls.durationMinutes, ctx_r0.lessonValidationMessages.durationMinutes), " ");
 } }
-function CoursesManagementComponent_div_125_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "div", 48)(1, "label");
+function CoursesManagementComponent_div_180_Template(rf, ctx) { if (rf & 1) {
+    i0.ɵɵelementStart(0, "div", 46)(1, "label");
     i0.ɵɵtext(2, "\u0646\u0635 \u0627\u0644\u0645\u062D\u062A\u0648\u0649");
     i0.ɵɵelementEnd();
-    i0.ɵɵelement(3, "textarea", 63);
-    i0.ɵɵelementStart(4, "div", 50);
+    i0.ɵɵelement(3, "textarea", 78);
+    i0.ɵɵelementStart(4, "div", 64);
     i0.ɵɵtext(5, "\u0644\u0644\u0645\u0642\u0627\u0644\u0627\u062A \u0623\u0648 \u0627\u0644\u062A\u0639\u0644\u064A\u0645\u0627\u062A \u0627\u0644\u0646\u0635\u064A\u0629 \u0623\u0648 \u0627\u0644\u0645\u062D\u062A\u0648\u0649 \u0627\u0644\u0645\u0646\u0633\u0648\u062E.");
     i0.ɵɵelementEnd()();
 } }
-function CoursesManagementComponent_div_130_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "div", 50);
+function CoursesManagementComponent_div_185_Template(rf, ctx) { if (rf & 1) {
+    i0.ɵɵelementStart(0, "div", 64);
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
 } if (rf & 2) {
@@ -141,13 +187,13 @@ function CoursesManagementComponent_div_130_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵadvance();
     i0.ɵɵtextInterpolate1("\u062A\u0645 \u0627\u062E\u062A\u064A\u0627\u0631 \u0627\u0644\u0645\u0644\u0641: ", ctx_r0.uploadedLessonFileName());
 } }
-function CoursesManagementComponent_div_131_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "div", 50);
+function CoursesManagementComponent_div_186_Template(rf, ctx) { if (rf & 1) {
+    i0.ɵɵelementStart(0, "div", 64);
     i0.ɵɵtext(1, " \u064A\u062A\u0645 \u062D\u0641\u0638 \u0627\u0644\u0645\u0644\u0641 \u0645\u062D\u0644\u064A\u0627\u064B \u062F\u0627\u062E\u0644 \u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u062F\u0631\u0633 \u062D\u0627\u0644\u064A\u0627\u064B\u060C \u0648\u0644\u064A\u0633 \u0641\u064A \u0645\u062E\u0632\u0646 \u0645\u0644\u0641\u0627\u062A \u062E\u0627\u0631\u062C\u064A. ");
     i0.ɵɵelementEnd();
 } }
-function CoursesManagementComponent_div_138_Template(rf, ctx) { if (rf & 1) {
-    i0.ɵɵelementStart(0, "div", 61);
+function CoursesManagementComponent_div_193_Template(rf, ctx) { if (rf & 1) {
+    i0.ɵɵelementStart(0, "div", 73);
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
 } if (rf & 2) {
@@ -155,14 +201,14 @@ function CoursesManagementComponent_div_138_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵadvance();
     i0.ɵɵtextInterpolate1(" ", ctx_r0.lessonContentErrorMessage(), " ");
 } }
-function CoursesManagementComponent_strong_149_Template(rf, ctx) { if (rf & 1) {
+function CoursesManagementComponent_strong_204_Template(rf, ctx) { if (rf & 1) {
     i0.ɵɵelementStart(0, "strong");
     i0.ɵɵtext(1);
     i0.ɵɵelementEnd();
 } if (rf & 2) {
-    const course_r5 = ctx.ngIf;
+    const course_r6 = ctx.ngIf;
     i0.ɵɵadvance();
-    i0.ɵɵtextInterpolate(course_r5.title);
+    i0.ɵɵtextInterpolate(course_r6.title);
 } }
 function lessonContentValidator(control) {
     const contentType = control.get('contentType')?.value;
@@ -182,7 +228,9 @@ export class CoursesManagementComponent {
         this.coursesApi = inject(CoursesApiService);
         this.lookupsApi = inject(LookupsApiService);
         this.router = inject(Router);
+        this.authService = inject(AuthService);
         this.courseDialog = viewChild.required('courseDialog');
+        this.aiDialog = viewChild.required('aiDialog');
         this.lessonDialog = viewChild.required('lessonDialog');
         this.deleteDialog = viewChild.required('deleteDialog');
         this.courses = signal([], ...(ngDevMode ? [{ debugName: "courses" }] : /* istanbul ignore next */ []));
@@ -191,6 +239,10 @@ export class CoursesManagementComponent {
         this.editingCourse = signal(null, ...(ngDevMode ? [{ debugName: "editingCourse" }] : /* istanbul ignore next */ []));
         this.deletingCourse = signal(null, ...(ngDevMode ? [{ debugName: "deletingCourse" }] : /* istanbul ignore next */ []));
         this.uploadedLessonFileName = signal('', ...(ngDevMode ? [{ debugName: "uploadedLessonFileName" }] : /* istanbul ignore next */ []));
+        this.aiDraftPreview = signal(null, ...(ngDevMode ? [{ debugName: "aiDraftPreview" }] : /* istanbul ignore next */ []));
+        this.loadingAiDraft = signal(false, ...(ngDevMode ? [{ debugName: "loadingAiDraft" }] : /* istanbul ignore next */ []));
+        this.creatingAiCourse = signal(false, ...(ngDevMode ? [{ debugName: "creatingAiCourse" }] : /* istanbul ignore next */ []));
+        this.canManageCourseLookups = computed(() => this.authService.currentUser()?.role !== 'course_manager', ...(ngDevMode ? [{ debugName: "canManageCourseLookups" }] : /* istanbul ignore next */ []));
         this.isEditMode = computed(() => !!this.editingCourse(), ...(ngDevMode ? [{ debugName: "isEditMode" }] : /* istanbul ignore next */ []));
         this.hasVisibleError = hasVisibleError;
         this.getVisibleErrorMessage = getVisibleErrorMessage;
@@ -247,6 +299,18 @@ export class CoursesManagementComponent {
             skillIds: [[]],
             kpiIds: [[]],
             status: ['published'],
+            certificateEnabled: [false],
+        });
+        this.aiDraftForm = this.fb.nonNullable.group({
+            topic: ['', Validators.required],
+            targetAudience: [''],
+            difficulty: ['beginner', Validators.required],
+            estimatedDurationMinutes: [60, [Validators.required, Validators.min(15)]],
+            lessonCount: [4, [Validators.required, Validators.min(1), Validators.max(12)]],
+            learningObjectives: [''],
+            notes: [''],
+            includeFinalExam: [true],
+            finalExamQuestionCount: [5, [Validators.required, Validators.min(3), Validators.max(20)]],
         });
         this.lessonForm = this.fb.nonNullable.group({
             courseId: ['', Validators.required],
@@ -272,12 +336,32 @@ export class CoursesManagementComponent {
             skillIds: [],
             kpiIds: [],
             status: 'published',
+            certificateEnabled: false,
         });
         clearControlState(this.courseForm);
         this.courseDialog().open();
     }
     closeCourseDialog() {
         this.courseDialog().close();
+    }
+    openAiDialog() {
+        this.aiDraftPreview.set(null);
+        this.aiDraftForm.reset({
+            topic: '',
+            targetAudience: '',
+            difficulty: 'beginner',
+            estimatedDurationMinutes: 60,
+            lessonCount: 4,
+            learningObjectives: '',
+            notes: '',
+            includeFinalExam: true,
+            finalExamQuestionCount: 5,
+        });
+        clearControlState(this.aiDraftForm);
+        this.aiDialog().open();
+    }
+    closeAiDialog() {
+        this.aiDialog().close();
     }
     closeDeleteDialog() {
         this.deletingCourse.set(null);
@@ -332,6 +416,7 @@ export class CoursesManagementComponent {
             skillIds: course.skillIds.map((item) => (typeof item === 'string' ? item : item._id || '')).filter(Boolean),
             kpiIds: course.kpiIds.map((item) => (typeof item === 'string' ? item : item._id || '')).filter(Boolean),
             status: course.status,
+            certificateEnabled: !!course.certificateEnabled,
         });
         clearControlState(this.courseForm);
         this.courseDialog().open();
@@ -345,7 +430,7 @@ export class CoursesManagementComponent {
         if (!courseId) {
             return;
         }
-        this.router.navigate(['/admin/courses', courseId, 'lessons']);
+        this.router.navigate([this.managementBasePath(), 'courses', courseId, 'lessons']);
     }
     submitCourse() {
         if (this.courseForm.invalid) {
@@ -356,6 +441,7 @@ export class CoursesManagementComponent {
             ...this.courseForm.getRawValue(),
             difficulty: this.courseForm.getRawValue().difficulty,
             status: this.courseForm.getRawValue().status,
+            certificateEnabled: this.courseForm.getRawValue().certificateEnabled,
         };
         const editingCourse = this.editingCourse();
         const courseId = editingCourse?._id || editingCourse?.id;
@@ -376,6 +462,7 @@ export class CoursesManagementComponent {
                 skillIds: [],
                 kpiIds: [],
                 status: 'published',
+                certificateEnabled: false,
             });
             this.closeCourseDialog();
             this.loadCourses();
@@ -408,7 +495,62 @@ export class CoursesManagementComponent {
                 isRequired: true,
             });
             this.closeLessonDialog();
-            this.router.navigate(['/admin/courses', payload.courseId, 'lessons']);
+            this.router.navigate([this.managementBasePath(), 'courses', payload.courseId, 'lessons']);
+        });
+    }
+    generateAiDraft() {
+        if (this.aiDraftForm.invalid || this.loadingAiDraft()) {
+            touchAllControls(this.aiDraftForm);
+            return;
+        }
+        const value = this.aiDraftForm.getRawValue();
+        this.loadingAiDraft.set(true);
+        this.aiDraftPreview.set(null);
+        this.coursesApi
+            .generateCourseDraft({
+            topic: value.topic.trim(),
+            targetAudience: value.targetAudience.trim() || undefined,
+            difficulty: value.difficulty,
+            estimatedDurationMinutes: Number(value.estimatedDurationMinutes),
+            lessonCount: Number(value.lessonCount),
+            learningObjectives: value.learningObjectives
+                .split('\n')
+                .map((item) => item.trim())
+                .filter(Boolean),
+            notes: value.notes.trim() || undefined,
+            includeFinalExam: value.includeFinalExam,
+            finalExamQuestionCount: Number(value.finalExamQuestionCount),
+        })
+            .pipe(finalize(() => this.loadingAiDraft.set(false)))
+            .subscribe((draft) => this.aiDraftPreview.set(draft));
+    }
+    createCourseFromAiDraft() {
+        const draft = this.aiDraftPreview();
+        if (!draft || this.creatingAiCourse()) {
+            return;
+        }
+        this.creatingAiCourse.set(true);
+        this.coursesApi
+            .createCourse({
+            ...draft.course,
+            finalQuiz: draft.finalQuiz || null,
+            skillIds: [],
+            kpiIds: [],
+        })
+            .pipe(switchMap((course) => {
+            const courseId = course._id || course.id || '';
+            return forkJoin(draft.lessons.map((lesson) => this.coursesApi.createLesson({
+                ...lesson,
+                courseId,
+            }))).pipe(switchMap(() => this.coursesApi.getCourse(courseId)));
+        }), finalize(() => this.creatingAiCourse.set(false)))
+            .subscribe((course) => {
+            const courseId = course._id || course.id || '';
+            this.closeAiDialog();
+            this.loadCourses();
+            if (courseId) {
+                this.router.navigate([this.managementBasePath(), 'courses', courseId, 'lessons']);
+            }
         });
     }
     lessonUsesTextContent() {
@@ -485,11 +627,19 @@ export class CoursesManagementComponent {
     }
     loadData() {
         this.loadCourses();
+        if (!this.canManageCourseLookups()) {
+            this.skills.set([]);
+            this.kpis.set([]);
+            return;
+        }
         this.lookupsApi.getSkills().subscribe((response) => this.skills.set(response));
         this.lookupsApi.getKpis().subscribe((response) => this.kpis.set(response));
     }
     loadCourses() {
         this.coursesApi.getCourses().subscribe((response) => this.courses.set(response));
+    }
+    managementBasePath() {
+        return this.authService.currentUser()?.role === 'course_manager' ? '/content' : '/admin';
     }
     difficultyLabel(value) {
         return {
@@ -507,197 +657,266 @@ export class CoursesManagementComponent {
     }
     static { this.ɵfac = function CoursesManagementComponent_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || CoursesManagementComponent)(); }; }
     static { this.ɵcmp = /*@__PURE__*/ i0.ɵɵdefineComponent({ type: CoursesManagementComponent, selectors: [["app-courses-management"]], viewQuery: function CoursesManagementComponent_Query(rf, ctx) { if (rf & 1) {
-            i0.ɵɵviewQuerySignal(ctx.courseDialog, _c0, 5)(ctx.lessonDialog, _c1, 5)(ctx.deleteDialog, _c2, 5);
+            i0.ɵɵviewQuerySignal(ctx.courseDialog, _c0, 5)(ctx.aiDialog, _c1, 5)(ctx.lessonDialog, _c2, 5)(ctx.deleteDialog, _c3, 5);
         } if (rf & 2) {
-            i0.ɵɵqueryAdvance(3);
-        } }, decls: 156, vars: 50, consts: [["courseDialog", ""], ["lessonDialog", ""], ["deleteDialog", ""], [1, "page-grid"], [1, "card", "panel"], [1, "panel-header"], [1, "section-title", "label-with-icon"], [1, "icon-badge"], ["name", "book-open", 3, "size"], [1, "section-subtitle"], [1, "panel-actions"], ["type", "button", 1, "btn", "btn-primary", 3, "click"], [1, "btn-content"], ["type", "button", 1, "btn", "btn-secondary", 3, "click"], ["name", "graduation", 3, "size"], [1, "section-title"], [3, "actionClicked", "columns", "rows", "actions"], [3, "title", "subtitle", "icon"], ["novalidate", "", 1, "dialog-form", 3, "ngSubmit", "formGroup"], [1, "form-grid"], [1, "field"], ["formControlName", "title"], ["class", "field-error", 4, "ngIf"], ["formControlName", "difficulty"], ["value", "beginner"], ["value", "intermediate"], ["value", "advanced"], ["type", "number", "formControlName", "estimatedDurationMinutes"], ["multiple", "", "formControlName", "skillIds"], [3, "value", 4, "ngFor", "ngForOf"], ["multiple", "", "formControlName", "kpiIds"], ["formControlName", "status"], ["value", "draft"], ["value", "published"], ["value", "archived"], ["rows", "4", "formControlName", "description"], [1, "dialog-actions"], ["type", "button", 1, "btn", "btn-ghost", 3, "click"], ["type", "submit", 1, "btn", "btn-primary", 3, "disabled"], ["title", "\u0625\u0636\u0627\u0641\u0629 \u062F\u0631\u0633", "subtitle", "\u0625\u062B\u0631\u0627\u0621 \u0627\u0644\u062F\u0648\u0631\u0627\u062A \u0627\u0644\u0642\u0627\u0626\u0645\u0629 \u0628\u062F\u0631\u0648\u0633 \u0642\u0627\u0628\u0644\u0629 \u0644\u0644\u062A\u062A\u0628\u0639.", "icon", "graduation"], ["formControlName", "courseId"], ["formControlName", "contentType"], ["value", "video"], ["value", "article"], ["value", "pdf"], ["value", "task"], ["type", "number", "formControlName", "order"], ["type", "number", "formControlName", "durationMinutes"], [1, "field", "field--full"], ["formControlName", "contentUrl", "placeholder", "https://example.com/lesson \u0623\u0648 \u0633\u064A\u062A\u0645 \u062A\u0639\u0628\u0626\u062A\u0647 \u0645\u0646 \u0627\u0644\u0645\u0644\u0641"], [1, "field-help"], ["class", "field field--full", 4, "ngIf"], ["type", "file", 3, "change"], ["class", "field-help", 4, "ngIf"], [1, "checkbox-field", "field--full"], ["type", "checkbox", "formControlName", "isRequired"], ["type", "submit", 1, "btn", "btn-secondary", 3, "disabled"], ["title", "\u062A\u0623\u0643\u064A\u062F \u062D\u0630\u0641 \u0627\u0644\u062F\u0648\u0631\u0629", "subtitle", "\u0633\u064A\u062A\u0645 \u062D\u0630\u0641 \u0627\u0644\u062F\u0648\u0631\u0629 \u0646\u0647\u0627\u0626\u064A\u0627\u064B \u0628\u0639\u062F \u0627\u0644\u062A\u0623\u0643\u064A\u062F.", "icon", "alert"], [1, "message-box", "error"], [4, "ngIf"], ["type", "button", 1, "btn", "btn-danger", 3, "click"], [1, "field-error"], [3, "value"], ["rows", "7", "formControlName", "contentHtml", "placeholder", "\u0627\u0643\u062A\u0628 \u0645\u062D\u062A\u0648\u0649 \u0627\u0644\u062F\u0631\u0633 \u0647\u0646\u0627 \u0623\u0648 \u0627\u0644\u0635\u0642 HTML \u0628\u0633\u064A\u0637\u0627\u064B."]], template: function CoursesManagementComponent_Template(rf, ctx) { if (rf & 1) {
-            i0.ɵɵelementStart(0, "section", 3)(1, "article", 4)(2, "div", 5)(3, "div")(4, "h2", 6)(5, "span", 7);
-            i0.ɵɵelement(6, "app-icon", 8);
+            i0.ɵɵqueryAdvance(4);
+        } }, decls: 211, vars: 57, consts: [["courseDialog", ""], ["aiDialog", ""], ["lessonDialog", ""], ["deleteDialog", ""], [1, "page-grid"], [1, "card", "panel"], [1, "panel-header"], [1, "section-title", "label-with-icon"], [1, "icon-badge"], ["name", "book-open", 3, "size"], [1, "section-subtitle"], [1, "panel-actions"], ["type", "button", 1, "btn", "btn-primary", 3, "click"], [1, "btn-content"], ["type", "button", 1, "btn", "btn-secondary", 3, "click"], ["name", "sparkles", 3, "size"], ["name", "graduation", 3, "size"], [1, "section-title"], [3, "actionClicked", "columns", "rows", "actions"], [3, "title", "subtitle", "icon"], ["novalidate", "", 1, "dialog-form", 3, "ngSubmit", "formGroup"], [1, "form-grid"], [1, "field"], ["formControlName", "title"], ["class", "field-error", 4, "ngIf"], ["formControlName", "difficulty"], ["value", "beginner"], ["value", "intermediate"], ["value", "advanced"], ["type", "number", "formControlName", "estimatedDurationMinutes"], ["class", "field", 4, "ngIf"], ["formControlName", "status"], ["value", "draft"], ["value", "published"], ["value", "archived"], [1, "checkbox-field", "field--full"], ["type", "checkbox", "formControlName", "certificateEnabled"], ["rows", "4", "formControlName", "description"], [1, "dialog-actions"], ["type", "button", 1, "btn", "btn-ghost", 3, "click"], ["type", "submit", 1, "btn", "btn-primary", 3, "disabled"], ["title", "\u0625\u0646\u0634\u0627\u0621 \u062F\u0648\u0631\u0629 \u0628\u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064A", "subtitle", "\u0648\u0644\u0651\u062F \u062F\u0648\u0631\u0629 \u0645\u0628\u062F\u0626\u064A\u0629 \u0645\u0639 \u0627\u0644\u062F\u0631\u0648\u0633 \u0648\u0627\u0644\u0634\u0631\u0627\u0626\u062D \u0648\u0627\u0644\u0627\u062E\u062A\u0628\u0627\u0631 \u0627\u0644\u0646\u0647\u0627\u0626\u064A \u062B\u0645 \u0631\u0627\u062C\u0639\u0647\u0627 \u0642\u0628\u0644 \u0627\u0644\u062D\u0641\u0638.", "icon", "sparkles"], ["formControlName", "topic"], ["formControlName", "targetAudience"], ["type", "number", "formControlName", "lessonCount"], ["type", "number", "formControlName", "finalExamQuestionCount"], [1, "field", "field--full"], ["rows", "3", "formControlName", "learningObjectives"], ["rows", "3", "formControlName", "notes"], ["type", "checkbox", "formControlName", "includeFinalExam"], ["class", "message-box info", 4, "ngIf"], ["type", "submit", 1, "btn", "btn-secondary", 3, "disabled"], ["type", "button", 1, "btn", "btn-primary", 3, "click", "disabled"], ["title", "\u0625\u0636\u0627\u0641\u0629 \u062F\u0631\u0633", "subtitle", "\u0625\u062B\u0631\u0627\u0621 \u0627\u0644\u062F\u0648\u0631\u0627\u062A \u0627\u0644\u0642\u0627\u0626\u0645\u0629 \u0628\u062F\u0631\u0648\u0633 \u0642\u0627\u0628\u0644\u0629 \u0644\u0644\u062A\u062A\u0628\u0639.", "icon", "graduation"], ["formControlName", "courseId"], [3, "value", 4, "ngFor", "ngForOf"], ["formControlName", "contentType"], ["value", "video"], ["value", "article"], ["value", "pdf"], ["value", "task"], ["type", "number", "formControlName", "order"], ["type", "number", "formControlName", "durationMinutes"], ["formControlName", "contentUrl", "placeholder", "https://example.com/lesson \u0623\u0648 \u0633\u064A\u062A\u0645 \u062A\u0639\u0628\u0626\u062A\u0647 \u0645\u0646 \u0627\u0644\u0645\u0644\u0641"], [1, "field-help"], ["class", "field field--full", 4, "ngIf"], ["type", "file", 3, "change"], ["class", "field-help", 4, "ngIf"], ["type", "checkbox", "formControlName", "isRequired"], ["title", "\u062A\u0623\u0643\u064A\u062F \u062D\u0630\u0641 \u0627\u0644\u062F\u0648\u0631\u0629", "subtitle", "\u0633\u064A\u062A\u0645 \u062D\u0630\u0641 \u0627\u0644\u062F\u0648\u0631\u0629 \u0646\u0647\u0627\u0626\u064A\u0627\u064B \u0628\u0639\u062F \u0627\u0644\u062A\u0623\u0643\u064A\u062F.", "icon", "alert"], [1, "message-box", "error"], [4, "ngIf"], ["type", "button", 1, "btn", "btn-danger", 3, "click"], [1, "field-error"], ["multiple", "", "formControlName", "skillIds"], [3, "value"], ["multiple", "", "formControlName", "kpiIds"], [1, "message-box", "info"], ["rows", "7", "formControlName", "contentHtml", "placeholder", "\u0627\u0643\u062A\u0628 \u0645\u062D\u062A\u0648\u0649 \u0627\u0644\u062F\u0631\u0633 \u0647\u0646\u0627 \u0623\u0648 \u0627\u0644\u0635\u0642 HTML \u0628\u0633\u064A\u0637\u0627\u064B."]], template: function CoursesManagementComponent_Template(rf, ctx) { if (rf & 1) {
+            i0.ɵɵelementStart(0, "section", 4)(1, "article", 5)(2, "div", 6)(3, "div")(4, "h2", 7)(5, "span", 8);
+            i0.ɵɵelement(6, "app-icon", 9);
             i0.ɵɵelementEnd();
             i0.ɵɵelementStart(7, "span");
             i0.ɵɵtext(8, "\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u062F\u0648\u0631\u0627\u062A");
             i0.ɵɵelementEnd()();
-            i0.ɵɵelementStart(9, "p", 9);
+            i0.ɵɵelementStart(9, "p", 10);
             i0.ɵɵtext(10, "\u0625\u0646\u0634\u0627\u0621 \u0627\u0644\u062F\u0648\u0631\u0627\u062A \u0648\u0627\u0644\u062F\u0631\u0648\u0633 \u0639\u0628\u0631 \u0646\u0648\u0627\u0641\u0630 \u0645\u0633\u062A\u0642\u0644\u0629 \u0628\u062F\u0644\u0627\u064B \u0645\u0646 \u0627\u0644\u0646\u0645\u0627\u0630\u062C \u0627\u0644\u0645\u0636\u0645\u0646\u0629.");
             i0.ɵɵelementEnd()();
-            i0.ɵɵelementStart(11, "div", 10)(12, "button", 11);
+            i0.ɵɵelementStart(11, "div", 11)(12, "button", 12);
             i0.ɵɵlistener("click", function CoursesManagementComponent_Template_button_click_12_listener() { return ctx.openCourseDialog(); });
-            i0.ɵɵelementStart(13, "span", 12);
-            i0.ɵɵelement(14, "app-icon", 8);
+            i0.ɵɵelementStart(13, "span", 13);
+            i0.ɵɵelement(14, "app-icon", 9);
             i0.ɵɵelementStart(15, "span");
             i0.ɵɵtext(16, "\u0625\u0636\u0627\u0641\u0629 \u062F\u0648\u0631\u0629");
             i0.ɵɵelementEnd()()();
-            i0.ɵɵelementStart(17, "button", 13);
-            i0.ɵɵlistener("click", function CoursesManagementComponent_Template_button_click_17_listener() { return ctx.openLessonDialog(); });
-            i0.ɵɵelementStart(18, "span", 12);
-            i0.ɵɵelement(19, "app-icon", 14);
+            i0.ɵɵelementStart(17, "button", 14);
+            i0.ɵɵlistener("click", function CoursesManagementComponent_Template_button_click_17_listener() { return ctx.openAiDialog(); });
+            i0.ɵɵelementStart(18, "span", 13);
+            i0.ɵɵelement(19, "app-icon", 15);
             i0.ɵɵelementStart(20, "span");
-            i0.ɵɵtext(21, "\u0625\u0636\u0627\u0641\u0629 \u062F\u0631\u0633");
-            i0.ɵɵelementEnd()()()()()();
-            i0.ɵɵelementStart(22, "article", 4)(23, "h2", 15);
-            i0.ɵɵtext(24, "\u0627\u0644\u062F\u0648\u0631\u0627\u062A \u0627\u0644\u062D\u0627\u0644\u064A\u0629");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(25, "app-data-table", 16);
-            i0.ɵɵlistener("actionClicked", function CoursesManagementComponent_Template_app_data_table_actionClicked_25_listener($event) { return ctx.handleTableAction($event); });
-            i0.ɵɵelementEnd()();
-            i0.ɵɵelementStart(26, "app-dialog", 17, 0)(28, "form", 18);
-            i0.ɵɵlistener("ngSubmit", function CoursesManagementComponent_Template_form_ngSubmit_28_listener() { return ctx.submitCourse(); });
-            i0.ɵɵelementStart(29, "div", 19)(30, "div", 20)(31, "label");
-            i0.ɵɵtext(32, "\u0639\u0646\u0648\u0627\u0646 \u0627\u0644\u062F\u0648\u0631\u0629");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelement(33, "input", 21);
-            i0.ɵɵtemplate(34, CoursesManagementComponent_div_34_Template, 2, 1, "div", 22);
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(35, "div", 20)(36, "label");
-            i0.ɵɵtext(37, "\u0627\u0644\u0645\u0633\u062A\u0648\u0649");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(38, "select", 23)(39, "option", 24);
-            i0.ɵɵtext(40, "\u0645\u0628\u062A\u062F\u0626");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(41, "option", 25);
-            i0.ɵɵtext(42, "\u0645\u062A\u0648\u0633\u0637");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(43, "option", 26);
-            i0.ɵɵtext(44, "\u0645\u062A\u0642\u062F\u0645");
-            i0.ɵɵelementEnd()();
-            i0.ɵɵtemplate(45, CoursesManagementComponent_div_45_Template, 2, 1, "div", 22);
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(46, "div", 20)(47, "label");
-            i0.ɵɵtext(48, "\u0627\u0644\u0645\u062F\u0629 \u0627\u0644\u062A\u0642\u062F\u064A\u0631\u064A\u0629");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelement(49, "input", 27);
-            i0.ɵɵtemplate(50, CoursesManagementComponent_div_50_Template, 2, 1, "div", 22);
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(51, "div", 20)(52, "label");
-            i0.ɵɵtext(53, "\u0627\u0644\u0645\u0647\u0627\u0631\u0627\u062A");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(54, "select", 28);
-            i0.ɵɵtemplate(55, CoursesManagementComponent_option_55_Template, 2, 2, "option", 29);
-            i0.ɵɵelementEnd()();
-            i0.ɵɵelementStart(56, "div", 20)(57, "label");
-            i0.ɵɵtext(58, "\u0627\u0644\u0645\u0624\u0634\u0631\u0627\u062A");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(59, "select", 30);
-            i0.ɵɵtemplate(60, CoursesManagementComponent_option_60_Template, 2, 2, "option", 29);
-            i0.ɵɵelementEnd()();
-            i0.ɵɵelementStart(61, "div", 20)(62, "label");
-            i0.ɵɵtext(63, "\u0627\u0644\u062D\u0627\u0644\u0629");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(64, "select", 31)(65, "option", 32);
-            i0.ɵɵtext(66, "\u0645\u0633\u0648\u062F\u0629");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(67, "option", 33);
-            i0.ɵɵtext(68, "\u0645\u0646\u0634\u0648\u0631\u0629");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(69, "option", 34);
-            i0.ɵɵtext(70, "\u0645\u0624\u0631\u0634\u0641\u0629");
-            i0.ɵɵelementEnd()()()();
-            i0.ɵɵelementStart(71, "div", 20)(72, "label");
-            i0.ɵɵtext(73, "\u0627\u0644\u0648\u0635\u0641");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelement(74, "textarea", 35);
-            i0.ɵɵtemplate(75, CoursesManagementComponent_div_75_Template, 2, 1, "div", 22);
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(76, "div", 36)(77, "button", 37);
-            i0.ɵɵlistener("click", function CoursesManagementComponent_Template_button_click_77_listener() { return ctx.closeCourseDialog(); });
-            i0.ɵɵtext(78, "\u0625\u0644\u063A\u0627\u0621");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(79, "button", 38);
-            i0.ɵɵtext(80);
-            i0.ɵɵelementEnd()()()();
-            i0.ɵɵelementStart(81, "app-dialog", 39, 1)(83, "form", 18);
-            i0.ɵɵlistener("ngSubmit", function CoursesManagementComponent_Template_form_ngSubmit_83_listener() { return ctx.submitLesson(); });
-            i0.ɵɵelementStart(84, "div", 19)(85, "div", 20)(86, "label");
-            i0.ɵɵtext(87, "\u0627\u0644\u062F\u0648\u0631\u0629");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(88, "select", 40);
-            i0.ɵɵtemplate(89, CoursesManagementComponent_option_89_Template, 2, 2, "option", 29);
-            i0.ɵɵelementEnd();
-            i0.ɵɵtemplate(90, CoursesManagementComponent_div_90_Template, 2, 1, "div", 22);
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(91, "div", 20)(92, "label");
-            i0.ɵɵtext(93, "\u0639\u0646\u0648\u0627\u0646 \u0627\u0644\u062F\u0631\u0633");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelement(94, "input", 21);
-            i0.ɵɵtemplate(95, CoursesManagementComponent_div_95_Template, 2, 1, "div", 22);
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(96, "div", 20)(97, "label");
-            i0.ɵɵtext(98, "\u0646\u0648\u0639 \u0627\u0644\u0645\u062D\u062A\u0648\u0649");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(99, "select", 41)(100, "option", 42);
-            i0.ɵɵtext(101, "\u0641\u064A\u062F\u064A\u0648");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(102, "option", 43);
-            i0.ɵɵtext(103, "\u0645\u0642\u0627\u0644");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(104, "option", 44);
-            i0.ɵɵtext(105, "PDF");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(106, "option", 45);
-            i0.ɵɵtext(107, "\u0645\u0647\u0645\u0629");
-            i0.ɵɵelementEnd()();
-            i0.ɵɵtemplate(108, CoursesManagementComponent_div_108_Template, 2, 1, "div", 22);
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(109, "div", 20)(110, "label");
-            i0.ɵɵtext(111, "\u0627\u0644\u062A\u0631\u062A\u064A\u0628");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelement(112, "input", 46);
-            i0.ɵɵtemplate(113, CoursesManagementComponent_div_113_Template, 2, 1, "div", 22);
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(114, "div", 20)(115, "label");
-            i0.ɵɵtext(116, "\u0627\u0644\u0645\u062F\u0629");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelement(117, "input", 47);
-            i0.ɵɵtemplate(118, CoursesManagementComponent_div_118_Template, 2, 1, "div", 22);
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(119, "div", 48)(120, "label");
-            i0.ɵɵtext(121, "\u0631\u0627\u0628\u0637 \u0627\u0644\u0645\u062D\u062A\u0648\u0649");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelement(122, "input", 49);
-            i0.ɵɵelementStart(123, "div", 50);
-            i0.ɵɵtext(124);
-            i0.ɵɵelementEnd()();
-            i0.ɵɵtemplate(125, CoursesManagementComponent_div_125_Template, 6, 0, "div", 51);
-            i0.ɵɵelementStart(126, "div", 48)(127, "label");
-            i0.ɵɵtext(128, "\u0631\u0641\u0639 \u0645\u0644\u0641 \u0627\u0644\u0645\u062D\u062A\u0648\u0649");
-            i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(129, "input", 52);
-            i0.ɵɵlistener("change", function CoursesManagementComponent_Template_input_change_129_listener($event) { return ctx.onLessonFileSelected($event); });
-            i0.ɵɵelementEnd();
-            i0.ɵɵtemplate(130, CoursesManagementComponent_div_130_Template, 2, 1, "div", 53)(131, CoursesManagementComponent_div_131_Template, 2, 0, "div", 53);
-            i0.ɵɵelementStart(132, "div", 50);
-            i0.ɵɵtext(133, " \u0644\u0625\u0646\u0634\u0627\u0621 \u0627\u062E\u062A\u0628\u0627\u0631 \u0645\u062A\u0639\u062F\u062F \u0627\u0644\u062E\u064A\u0627\u0631\u0627\u062A \u0627\u0633\u062A\u062E\u062F\u0645 \u0634\u0627\u0634\u0629 \"\u0627\u0644\u062F\u0631\u0648\u0633\" \u0627\u0644\u062E\u0627\u0635\u0629 \u0628\u0627\u0644\u062F\u0648\u0631\u0629. ");
-            i0.ɵɵelementEnd()();
-            i0.ɵɵelementStart(134, "label", 54);
-            i0.ɵɵelement(135, "input", 55);
-            i0.ɵɵelementStart(136, "span");
-            i0.ɵɵtext(137, "\u0647\u0630\u0627 \u0627\u0644\u062F\u0631\u0633 \u0625\u0644\u0632\u0627\u0645\u064A \u0644\u0625\u0643\u0645\u0627\u0644 \u0627\u0644\u062F\u0648\u0631\u0629");
+            i0.ɵɵtext(21, "\u062A\u0648\u0644\u064A\u062F \u0628\u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064A");
             i0.ɵɵelementEnd()()();
-            i0.ɵɵtemplate(138, CoursesManagementComponent_div_138_Template, 2, 1, "div", 22);
-            i0.ɵɵelementStart(139, "div", 36)(140, "button", 37);
-            i0.ɵɵlistener("click", function CoursesManagementComponent_Template_button_click_140_listener() { return ctx.closeLessonDialog(); });
-            i0.ɵɵtext(141, "\u0625\u0644\u063A\u0627\u0621");
+            i0.ɵɵelementStart(22, "button", 14);
+            i0.ɵɵlistener("click", function CoursesManagementComponent_Template_button_click_22_listener() { return ctx.openLessonDialog(); });
+            i0.ɵɵelementStart(23, "span", 13);
+            i0.ɵɵelement(24, "app-icon", 16);
+            i0.ɵɵelementStart(25, "span");
+            i0.ɵɵtext(26, "\u0625\u0636\u0627\u0641\u0629 \u062F\u0631\u0633");
+            i0.ɵɵelementEnd()()()()()();
+            i0.ɵɵelementStart(27, "article", 5)(28, "h2", 17);
+            i0.ɵɵtext(29, "\u0627\u0644\u062F\u0648\u0631\u0627\u062A \u0627\u0644\u062D\u0627\u0644\u064A\u0629");
             i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(142, "button", 56);
-            i0.ɵɵtext(143, "\u0625\u0636\u0627\u0641\u0629 \u062F\u0631\u0633");
+            i0.ɵɵelementStart(30, "app-data-table", 18);
+            i0.ɵɵlistener("actionClicked", function CoursesManagementComponent_Template_app_data_table_actionClicked_30_listener($event) { return ctx.handleTableAction($event); });
+            i0.ɵɵelementEnd()();
+            i0.ɵɵelementStart(31, "app-dialog", 19, 0)(33, "form", 20);
+            i0.ɵɵlistener("ngSubmit", function CoursesManagementComponent_Template_form_ngSubmit_33_listener() { return ctx.submitCourse(); });
+            i0.ɵɵelementStart(34, "div", 21)(35, "div", 22)(36, "label");
+            i0.ɵɵtext(37, "\u0639\u0646\u0648\u0627\u0646 \u0627\u0644\u062F\u0648\u0631\u0629");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelement(38, "input", 23);
+            i0.ɵɵtemplate(39, CoursesManagementComponent_div_39_Template, 2, 1, "div", 24);
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(40, "div", 22)(41, "label");
+            i0.ɵɵtext(42, "\u0627\u0644\u0645\u0633\u062A\u0648\u0649");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(43, "select", 25)(44, "option", 26);
+            i0.ɵɵtext(45, "\u0645\u0628\u062A\u062F\u0626");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(46, "option", 27);
+            i0.ɵɵtext(47, "\u0645\u062A\u0648\u0633\u0637");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(48, "option", 28);
+            i0.ɵɵtext(49, "\u0645\u062A\u0642\u062F\u0645");
+            i0.ɵɵelementEnd()();
+            i0.ɵɵtemplate(50, CoursesManagementComponent_div_50_Template, 2, 1, "div", 24);
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(51, "div", 22)(52, "label");
+            i0.ɵɵtext(53, "\u0627\u0644\u0645\u062F\u0629 \u0627\u0644\u062A\u0642\u062F\u064A\u0631\u064A\u0629");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelement(54, "input", 29);
+            i0.ɵɵtemplate(55, CoursesManagementComponent_div_55_Template, 2, 1, "div", 24);
+            i0.ɵɵelementEnd();
+            i0.ɵɵtemplate(56, CoursesManagementComponent_div_56_Template, 5, 1, "div", 30)(57, CoursesManagementComponent_div_57_Template, 5, 1, "div", 30);
+            i0.ɵɵelementStart(58, "div", 22)(59, "label");
+            i0.ɵɵtext(60, "\u0627\u0644\u062D\u0627\u0644\u0629");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(61, "select", 31)(62, "option", 32);
+            i0.ɵɵtext(63, "\u0645\u0633\u0648\u062F\u0629");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(64, "option", 33);
+            i0.ɵɵtext(65, "\u0645\u0646\u0634\u0648\u0631\u0629");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(66, "option", 34);
+            i0.ɵɵtext(67, "\u0645\u0624\u0631\u0634\u0641\u0629");
+            i0.ɵɵelementEnd()()();
+            i0.ɵɵelementStart(68, "label", 35);
+            i0.ɵɵelement(69, "input", 36);
+            i0.ɵɵelementStart(70, "span");
+            i0.ɵɵtext(71, "\u062A\u0641\u0639\u064A\u0644 \u0634\u0647\u0627\u062F\u0629 \u0625\u062A\u0645\u0627\u0645 \u0644\u0647\u0630\u0647 \u0627\u0644\u062F\u0648\u0631\u0629");
+            i0.ɵɵelementEnd()()();
+            i0.ɵɵelementStart(72, "div", 22)(73, "label");
+            i0.ɵɵtext(74, "\u0627\u0644\u0648\u0635\u0641");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelement(75, "textarea", 37);
+            i0.ɵɵtemplate(76, CoursesManagementComponent_div_76_Template, 2, 1, "div", 24);
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(77, "div", 38)(78, "button", 39);
+            i0.ɵɵlistener("click", function CoursesManagementComponent_Template_button_click_78_listener() { return ctx.closeCourseDialog(); });
+            i0.ɵɵtext(79, "\u0625\u0644\u063A\u0627\u0621");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(80, "button", 40);
+            i0.ɵɵtext(81);
             i0.ɵɵelementEnd()()()();
-            i0.ɵɵelementStart(144, "app-dialog", 57, 2)(146, "div", 3)(147, "div", 58);
-            i0.ɵɵtext(148, " \u0647\u0644 \u0623\u0646\u062A \u0645\u062A\u0623\u0643\u062F \u0645\u0646 \u062D\u0630\u0641 \u0627\u0644\u062F\u0648\u0631\u0629 ");
-            i0.ɵɵtemplate(149, CoursesManagementComponent_strong_149_Template, 2, 1, "strong", 59);
-            i0.ɵɵtext(150, " \u061F \u0644\u0627 \u064A\u0645\u0643\u0646 \u0627\u0644\u062A\u0631\u0627\u062C\u0639 \u0639\u0646 \u0647\u0630\u0627 \u0627\u0644\u0625\u062C\u0631\u0627\u0621. ");
+            i0.ɵɵelementStart(82, "app-dialog", 41, 1)(84, "form", 20);
+            i0.ɵɵlistener("ngSubmit", function CoursesManagementComponent_Template_form_ngSubmit_84_listener() { return ctx.generateAiDraft(); });
+            i0.ɵɵelementStart(85, "div", 21)(86, "div", 22)(87, "label");
+            i0.ɵɵtext(88, "\u0645\u0648\u0636\u0648\u0639 \u0627\u0644\u062F\u0648\u0631\u0629");
             i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(151, "div", 36)(152, "button", 37);
-            i0.ɵɵlistener("click", function CoursesManagementComponent_Template_button_click_152_listener() { return ctx.closeDeleteDialog(); });
-            i0.ɵɵtext(153, "\u0625\u0644\u063A\u0627\u0621");
+            i0.ɵɵelement(89, "input", 42);
             i0.ɵɵelementEnd();
-            i0.ɵɵelementStart(154, "button", 60);
-            i0.ɵɵlistener("click", function CoursesManagementComponent_Template_button_click_154_listener() { return ctx.confirmDelete(); });
-            i0.ɵɵtext(155, "\u062A\u0623\u0643\u064A\u062F \u0627\u0644\u062D\u0630\u0641");
+            i0.ɵɵelementStart(90, "div", 22)(91, "label");
+            i0.ɵɵtext(92, "\u0627\u0644\u0641\u0626\u0629 \u0627\u0644\u0645\u0633\u062A\u0647\u062F\u0641\u0629");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelement(93, "input", 43);
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(94, "div", 22)(95, "label");
+            i0.ɵɵtext(96, "\u0627\u0644\u0645\u0633\u062A\u0648\u0649");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(97, "select", 25)(98, "option", 26);
+            i0.ɵɵtext(99, "\u0645\u0628\u062A\u062F\u0626");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(100, "option", 27);
+            i0.ɵɵtext(101, "\u0645\u062A\u0648\u0633\u0637");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(102, "option", 28);
+            i0.ɵɵtext(103, "\u0645\u062A\u0642\u062F\u0645");
+            i0.ɵɵelementEnd()()();
+            i0.ɵɵelementStart(104, "div", 22)(105, "label");
+            i0.ɵɵtext(106, "\u0627\u0644\u0645\u062F\u0629 \u0627\u0644\u062A\u0642\u062F\u064A\u0631\u064A\u0629");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelement(107, "input", 29);
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(108, "div", 22)(109, "label");
+            i0.ɵɵtext(110, "\u0639\u062F\u062F \u0627\u0644\u062F\u0631\u0648\u0633");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelement(111, "input", 44);
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(112, "div", 22)(113, "label");
+            i0.ɵɵtext(114, "\u0639\u062F\u062F \u0623\u0633\u0626\u0644\u0629 \u0627\u0644\u0627\u062E\u062A\u0628\u0627\u0631 \u0627\u0644\u0646\u0647\u0627\u0626\u064A");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelement(115, "input", 45);
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(116, "div", 46)(117, "label");
+            i0.ɵɵtext(118, "\u0627\u0644\u0623\u0647\u062F\u0627\u0641 \u0627\u0644\u062A\u0639\u0644\u064A\u0645\u064A\u0629");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelement(119, "textarea", 47);
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(120, "div", 46)(121, "label");
+            i0.ɵɵtext(122, "\u0645\u0644\u0627\u062D\u0638\u0627\u062A \u0625\u0636\u0627\u0641\u064A\u0629");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelement(123, "textarea", 48);
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(124, "label", 35);
+            i0.ɵɵelement(125, "input", 49);
+            i0.ɵɵelementStart(126, "span");
+            i0.ɵɵtext(127, "\u0625\u0646\u0634\u0627\u0621 \u0627\u062E\u062A\u0628\u0627\u0631 \u0646\u0647\u0627\u0626\u064A");
+            i0.ɵɵelementEnd()()();
+            i0.ɵɵtemplate(128, CoursesManagementComponent_div_128_Template, 7, 4, "div", 50);
+            i0.ɵɵelementStart(129, "div", 38)(130, "button", 39);
+            i0.ɵɵlistener("click", function CoursesManagementComponent_Template_button_click_130_listener() { return ctx.closeAiDialog(); });
+            i0.ɵɵtext(131, "\u0625\u0644\u063A\u0627\u0621");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(132, "button", 51);
+            i0.ɵɵtext(133);
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(134, "button", 52);
+            i0.ɵɵlistener("click", function CoursesManagementComponent_Template_button_click_134_listener() { return ctx.createCourseFromAiDraft(); });
+            i0.ɵɵtext(135);
+            i0.ɵɵelementEnd()()()();
+            i0.ɵɵelementStart(136, "app-dialog", 53, 2)(138, "form", 20);
+            i0.ɵɵlistener("ngSubmit", function CoursesManagementComponent_Template_form_ngSubmit_138_listener() { return ctx.submitLesson(); });
+            i0.ɵɵelementStart(139, "div", 21)(140, "div", 22)(141, "label");
+            i0.ɵɵtext(142, "\u0627\u0644\u062F\u0648\u0631\u0629");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(143, "select", 54);
+            i0.ɵɵtemplate(144, CoursesManagementComponent_option_144_Template, 2, 2, "option", 55);
+            i0.ɵɵelementEnd();
+            i0.ɵɵtemplate(145, CoursesManagementComponent_div_145_Template, 2, 1, "div", 24);
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(146, "div", 22)(147, "label");
+            i0.ɵɵtext(148, "\u0639\u0646\u0648\u0627\u0646 \u0627\u0644\u062F\u0631\u0633");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelement(149, "input", 23);
+            i0.ɵɵtemplate(150, CoursesManagementComponent_div_150_Template, 2, 1, "div", 24);
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(151, "div", 22)(152, "label");
+            i0.ɵɵtext(153, "\u0646\u0648\u0639 \u0627\u0644\u0645\u062D\u062A\u0648\u0649");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(154, "select", 56)(155, "option", 57);
+            i0.ɵɵtext(156, "\u0641\u064A\u062F\u064A\u0648");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(157, "option", 58);
+            i0.ɵɵtext(158, "\u0645\u0642\u0627\u0644");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(159, "option", 59);
+            i0.ɵɵtext(160, "PDF");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(161, "option", 60);
+            i0.ɵɵtext(162, "\u0645\u0647\u0645\u0629");
+            i0.ɵɵelementEnd()();
+            i0.ɵɵtemplate(163, CoursesManagementComponent_div_163_Template, 2, 1, "div", 24);
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(164, "div", 22)(165, "label");
+            i0.ɵɵtext(166, "\u0627\u0644\u062A\u0631\u062A\u064A\u0628");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelement(167, "input", 61);
+            i0.ɵɵtemplate(168, CoursesManagementComponent_div_168_Template, 2, 1, "div", 24);
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(169, "div", 22)(170, "label");
+            i0.ɵɵtext(171, "\u0627\u0644\u0645\u062F\u0629");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelement(172, "input", 62);
+            i0.ɵɵtemplate(173, CoursesManagementComponent_div_173_Template, 2, 1, "div", 24);
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(174, "div", 46)(175, "label");
+            i0.ɵɵtext(176, "\u0631\u0627\u0628\u0637 \u0627\u0644\u0645\u062D\u062A\u0648\u0649");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelement(177, "input", 63);
+            i0.ɵɵelementStart(178, "div", 64);
+            i0.ɵɵtext(179);
+            i0.ɵɵelementEnd()();
+            i0.ɵɵtemplate(180, CoursesManagementComponent_div_180_Template, 6, 0, "div", 65);
+            i0.ɵɵelementStart(181, "div", 46)(182, "label");
+            i0.ɵɵtext(183, "\u0631\u0641\u0639 \u0645\u0644\u0641 \u0627\u0644\u0645\u062D\u062A\u0648\u0649");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(184, "input", 66);
+            i0.ɵɵlistener("change", function CoursesManagementComponent_Template_input_change_184_listener($event) { return ctx.onLessonFileSelected($event); });
+            i0.ɵɵelementEnd();
+            i0.ɵɵtemplate(185, CoursesManagementComponent_div_185_Template, 2, 1, "div", 67)(186, CoursesManagementComponent_div_186_Template, 2, 0, "div", 67);
+            i0.ɵɵelementStart(187, "div", 64);
+            i0.ɵɵtext(188, " \u0644\u0625\u0646\u0634\u0627\u0621 \u0627\u062E\u062A\u0628\u0627\u0631 \u0645\u062A\u0639\u062F\u062F \u0627\u0644\u062E\u064A\u0627\u0631\u0627\u062A \u0627\u0633\u062A\u062E\u062F\u0645 \u0634\u0627\u0634\u0629 \"\u0627\u0644\u062F\u0631\u0648\u0633\" \u0627\u0644\u062E\u0627\u0635\u0629 \u0628\u0627\u0644\u062F\u0648\u0631\u0629. ");
+            i0.ɵɵelementEnd()();
+            i0.ɵɵelementStart(189, "label", 35);
+            i0.ɵɵelement(190, "input", 68);
+            i0.ɵɵelementStart(191, "span");
+            i0.ɵɵtext(192, "\u0647\u0630\u0627 \u0627\u0644\u062F\u0631\u0633 \u0625\u0644\u0632\u0627\u0645\u064A \u0644\u0625\u0643\u0645\u0627\u0644 \u0627\u0644\u062F\u0648\u0631\u0629");
+            i0.ɵɵelementEnd()()();
+            i0.ɵɵtemplate(193, CoursesManagementComponent_div_193_Template, 2, 1, "div", 24);
+            i0.ɵɵelementStart(194, "div", 38)(195, "button", 39);
+            i0.ɵɵlistener("click", function CoursesManagementComponent_Template_button_click_195_listener() { return ctx.closeLessonDialog(); });
+            i0.ɵɵtext(196, "\u0625\u0644\u063A\u0627\u0621");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(197, "button", 51);
+            i0.ɵɵtext(198, "\u0625\u0636\u0627\u0641\u0629 \u062F\u0631\u0633");
+            i0.ɵɵelementEnd()()()();
+            i0.ɵɵelementStart(199, "app-dialog", 69, 3)(201, "div", 4)(202, "div", 70);
+            i0.ɵɵtext(203, " \u0647\u0644 \u0623\u0646\u062A \u0645\u062A\u0623\u0643\u062F \u0645\u0646 \u062D\u0630\u0641 \u0627\u0644\u062F\u0648\u0631\u0629 ");
+            i0.ɵɵtemplate(204, CoursesManagementComponent_strong_204_Template, 2, 1, "strong", 71);
+            i0.ɵɵtext(205, " \u061F \u0644\u0627 \u064A\u0645\u0643\u0646 \u0627\u0644\u062A\u0631\u0627\u062C\u0639 \u0639\u0646 \u0647\u0630\u0627 \u0627\u0644\u0625\u062C\u0631\u0627\u0621. ");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(206, "div", 38)(207, "button", 39);
+            i0.ɵɵlistener("click", function CoursesManagementComponent_Template_button_click_207_listener() { return ctx.closeDeleteDialog(); });
+            i0.ɵɵtext(208, "\u0625\u0644\u063A\u0627\u0621");
+            i0.ɵɵelementEnd();
+            i0.ɵɵelementStart(209, "button", 72);
+            i0.ɵɵlistener("click", function CoursesManagementComponent_Template_button_click_209_listener() { return ctx.confirmDelete(); });
+            i0.ɵɵtext(210, "\u062A\u0623\u0643\u064A\u062F \u0627\u0644\u062D\u0630\u0641");
             i0.ɵɵelementEnd()()()()();
         } if (rf & 2) {
             i0.ɵɵadvance(6);
             i0.ɵɵproperty("size", 20);
             i0.ɵɵadvance(8);
+            i0.ɵɵproperty("size", 18);
+            i0.ɵɵadvance(5);
             i0.ɵɵproperty("size", 18);
             i0.ɵɵadvance(5);
             i0.ɵɵproperty("size", 18);
@@ -719,11 +938,11 @@ export class CoursesManagementComponent {
             i0.ɵɵclassProp("is-invalid", ctx.hasVisibleError(ctx.courseForm.controls.estimatedDurationMinutes));
             i0.ɵɵadvance();
             i0.ɵɵproperty("ngIf", ctx.hasVisibleError(ctx.courseForm.controls.estimatedDurationMinutes));
-            i0.ɵɵadvance(5);
-            i0.ɵɵproperty("ngForOf", ctx.skills());
-            i0.ɵɵadvance(5);
-            i0.ɵɵproperty("ngForOf", ctx.kpis());
-            i0.ɵɵadvance(14);
+            i0.ɵɵadvance();
+            i0.ɵɵproperty("ngIf", ctx.canManageCourseLookups());
+            i0.ɵɵadvance();
+            i0.ɵɵproperty("ngIf", ctx.canManageCourseLookups());
+            i0.ɵɵadvance(18);
             i0.ɵɵclassProp("is-invalid", ctx.hasVisibleError(ctx.courseForm.controls.description));
             i0.ɵɵadvance();
             i0.ɵɵproperty("ngIf", ctx.hasVisibleError(ctx.courseForm.controls.description));
@@ -731,6 +950,18 @@ export class CoursesManagementComponent {
             i0.ɵɵproperty("disabled", ctx.courseForm.invalid);
             i0.ɵɵadvance();
             i0.ɵɵtextInterpolate1(" ", ctx.isEditMode() ? "\u062D\u0641\u0638 \u0627\u0644\u062A\u0639\u062F\u064A\u0644\u0627\u062A" : "\u062D\u0641\u0638 \u0627\u0644\u062F\u0648\u0631\u0629", " ");
+            i0.ɵɵadvance(3);
+            i0.ɵɵproperty("formGroup", ctx.aiDraftForm);
+            i0.ɵɵadvance(44);
+            i0.ɵɵproperty("ngIf", ctx.aiDraftPreview());
+            i0.ɵɵadvance(4);
+            i0.ɵɵproperty("disabled", ctx.aiDraftForm.invalid || ctx.loadingAiDraft());
+            i0.ɵɵadvance();
+            i0.ɵɵtextInterpolate1(" ", ctx.loadingAiDraft() ? "\u062C\u0627\u0631\u064D \u0627\u0644\u062A\u0648\u0644\u064A\u062F..." : "\u062A\u0648\u0644\u064A\u062F \u0627\u0644\u0645\u0633\u0648\u062F\u0629", " ");
+            i0.ɵɵadvance();
+            i0.ɵɵproperty("disabled", !ctx.aiDraftPreview() || ctx.creatingAiCourse());
+            i0.ɵɵadvance();
+            i0.ɵɵtextInterpolate1(" ", ctx.creatingAiCourse() ? "\u062C\u0627\u0631\u064D \u0627\u0644\u0625\u0646\u0634\u0627\u0621..." : "\u0625\u0646\u0634\u0627\u0621 \u0627\u0644\u062F\u0648\u0631\u0629 \u0645\u0646 \u0627\u0644\u0645\u0633\u0648\u062F\u0629", " ");
             i0.ɵɵadvance(3);
             i0.ɵɵproperty("formGroup", ctx.lessonForm);
             i0.ɵɵadvance(5);
@@ -789,6 +1020,12 @@ export class CoursesManagementComponent {
               <span class="btn-content">
                 <app-icon name="book-open" [size]="18" />
                 <span>إضافة دورة</span>
+              </span>
+            </button>
+            <button class="btn btn-secondary" type="button" (click)="openAiDialog()">
+              <span class="btn-content">
+                <app-icon name="sparkles" [size]="18" />
+                <span>توليد بالذكاء الاصطناعي</span>
               </span>
             </button>
             <button class="btn btn-secondary" type="button" (click)="openLessonDialog()">
@@ -852,13 +1089,13 @@ export class CoursesManagementComponent {
                 }}
               </div>
             </div>
-            <div class="field">
+            <div class="field" *ngIf="canManageCourseLookups()">
               <label>المهارات</label>
               <select multiple formControlName="skillIds">
                 <option *ngFor="let skill of skills()" [value]="skill._id">{{ skill.name }}</option>
               </select>
             </div>
-            <div class="field">
+            <div class="field" *ngIf="canManageCourseLookups()">
               <label>المؤشرات</label>
               <select multiple formControlName="kpiIds">
                 <option *ngFor="let kpi of kpis()" [value]="kpi._id">{{ kpi.name }}</option>
@@ -872,6 +1109,10 @@ export class CoursesManagementComponent {
                 <option value="archived">مؤرشفة</option>
               </select>
             </div>
+            <label class="checkbox-field field--full">
+              <input type="checkbox" formControlName="certificateEnabled" />
+              <span>تفعيل شهادة إتمام لهذه الدورة</span>
+            </label>
           </div>
           <div class="field">
             <label>الوصف</label>
@@ -889,6 +1130,74 @@ export class CoursesManagementComponent {
             <button class="btn btn-ghost" type="button" (click)="closeCourseDialog()">إلغاء</button>
             <button class="btn btn-primary" type="submit" [disabled]="courseForm.invalid">
               {{ isEditMode() ? 'حفظ التعديلات' : 'حفظ الدورة' }}
+            </button>
+          </div>
+        </form>
+      </app-dialog>
+
+      <app-dialog
+        #aiDialog
+        title="إنشاء دورة بالذكاء الاصطناعي"
+        subtitle="ولّد دورة مبدئية مع الدروس والشرائح والاختبار النهائي ثم راجعها قبل الحفظ."
+        icon="sparkles"
+      >
+        <form class="dialog-form" [formGroup]="aiDraftForm" (ngSubmit)="generateAiDraft()" novalidate>
+          <div class="form-grid">
+            <div class="field">
+              <label>موضوع الدورة</label>
+              <input formControlName="topic" />
+            </div>
+            <div class="field">
+              <label>الفئة المستهدفة</label>
+              <input formControlName="targetAudience" />
+            </div>
+            <div class="field">
+              <label>المستوى</label>
+              <select formControlName="difficulty">
+                <option value="beginner">مبتدئ</option>
+                <option value="intermediate">متوسط</option>
+                <option value="advanced">متقدم</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>المدة التقديرية</label>
+              <input type="number" formControlName="estimatedDurationMinutes" />
+            </div>
+            <div class="field">
+              <label>عدد الدروس</label>
+              <input type="number" formControlName="lessonCount" />
+            </div>
+            <div class="field">
+              <label>عدد أسئلة الاختبار النهائي</label>
+              <input type="number" formControlName="finalExamQuestionCount" />
+            </div>
+            <div class="field field--full">
+              <label>الأهداف التعليمية</label>
+              <textarea rows="3" formControlName="learningObjectives"></textarea>
+            </div>
+            <div class="field field--full">
+              <label>ملاحظات إضافية</label>
+              <textarea rows="3" formControlName="notes"></textarea>
+            </div>
+            <label class="checkbox-field field--full">
+              <input type="checkbox" formControlName="includeFinalExam" />
+              <span>إنشاء اختبار نهائي</span>
+            </label>
+          </div>
+
+          <div class="message-box info" *ngIf="aiDraftPreview() as draft">
+            <strong>{{ draft.course.title }}</strong>
+            <p>{{ draft.course.description }}</p>
+            <p>{{ draft.lessons.length }} دروس • {{ draft.finalQuiz?.questions?.length || 0 }} أسئلة نهائية</p>
+          </div>
+
+          <div class="dialog-actions">
+            <button class="btn btn-ghost" type="button" (click)="closeAiDialog()">إلغاء</button>
+            <button class="btn btn-secondary" type="submit" [disabled]="aiDraftForm.invalid || loadingAiDraft()">
+              {{ loadingAiDraft() ? 'جارٍ التوليد...' : 'توليد المسودة' }}
+            </button>
+            <button class="btn btn-primary" type="button" (click)="createCourseFromAiDraft()" [disabled]="!aiDraftPreview() || creatingAiCourse()">
+              {{ creatingAiCourse() ? 'جارٍ الإنشاء...' : 'إنشاء الدورة من المسودة' }}
             </button>
           </div>
         </form>
@@ -1015,6 +1324,6 @@ export class CoursesManagementComponent {
       </app-dialog>
     </section>
   `, changeDetection: ChangeDetectionStrategy.OnPush, styles: ["\n      .panel {\n        padding: 1.5rem;\n      }\n\n      .field--full {\n        grid-column: 1 / -1;\n      }\n\n      .field-help {\n        margin-top: 0.45rem;\n        font-size: 0.9rem;\n        color: var(--color-secondary-paragraph);\n      }\n\n      .checkbox-field {\n        display: flex;\n        align-items: center;\n        gap: 0.65rem;\n        color: var(--color-primary-text);\n      }\n    "] }]
-    }], null, { courseDialog: [{ type: i0.ViewChild, args: ['courseDialog', { isSignal: true }] }], lessonDialog: [{ type: i0.ViewChild, args: ['lessonDialog', { isSignal: true }] }], deleteDialog: [{ type: i0.ViewChild, args: ['deleteDialog', { isSignal: true }] }] }); })();
-(() => { (typeof ngDevMode === "undefined" || ngDevMode) && i0.ɵsetClassDebugInfo(CoursesManagementComponent, { className: "CoursesManagementComponent", filePath: "src/app/features/admin/pages/courses-management.component.ts", lineNumber: 305 }); })();
+    }], null, { courseDialog: [{ type: i0.ViewChild, args: ['courseDialog', { isSignal: true }] }], aiDialog: [{ type: i0.ViewChild, args: ['aiDialog', { isSignal: true }] }], lessonDialog: [{ type: i0.ViewChild, args: ['lessonDialog', { isSignal: true }] }], deleteDialog: [{ type: i0.ViewChild, args: ['deleteDialog', { isSignal: true }] }] }); })();
+(() => { (typeof ngDevMode === "undefined" || ngDevMode) && i0.ɵsetClassDebugInfo(CoursesManagementComponent, { className: "CoursesManagementComponent", filePath: "src/app/features/admin/pages/courses-management.component.ts", lineNumber: 385 }); })();
 //# sourceMappingURL=courses-management.component.js.map

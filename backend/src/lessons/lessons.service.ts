@@ -16,10 +16,11 @@ import { EnrollmentsService } from 'src/enrollments/enrollments.service';
 import { GamificationService } from 'src/gamification/gamification.service';
 import { CompleteLessonDto } from './dto/complete-lesson.dto';
 import { CreateLessonDto, LessonQuizDto } from './dto/create-lesson.dto';
+import { LessonSlideDto } from './dto/lesson-slide.dto';
 import { SubmitQuizAttemptDto } from './dto/submit-quiz-attempt.dto';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
 import { LessonProgress, LessonProgressDocument } from './schemas/lesson-progress.schema';
-import { Lesson, LessonDocument, LessonQuiz } from './schemas/lesson.schema';
+import { Lesson, LessonDocument, LessonQuiz, LessonSlide } from './schemas/lesson.schema';
 
 type CurrentUser = {
   id: string;
@@ -51,7 +52,8 @@ export class LessonsService {
     if (
       !currentUser ||
       currentUser.role === UserRole.Admin ||
-      currentUser.role === UserRole.Hr
+      currentUser.role === UserRole.Hr ||
+      currentUser.role === UserRole.CourseManager
     ) {
       return lessons;
     }
@@ -128,7 +130,12 @@ export class LessonsService {
       existingProgress,
     );
 
-    return this.syncEnrollmentProgress(enrollment.id, userId, lesson.courseId.toString(), enrollment.startedAt ?? new Date());
+    return this.enrollmentsService.syncCourseProgress(
+      enrollment.id,
+      userId,
+      lesson.courseId.toString(),
+      enrollment.startedAt ?? new Date(),
+    );
   }
 
   async submitQuizAttempt(id: string, userId: string, submitQuizAttemptDto: SubmitQuizAttemptDto) {
@@ -198,7 +205,7 @@ export class LessonsService {
       await this.markLessonCompleted(lesson, userId, timeSpentMinutes, progress);
     }
 
-    const enrollmentProgress = await this.syncEnrollmentProgress(
+    const enrollmentProgress = await this.enrollmentsService.syncCourseProgress(
       enrollment.id,
       userId,
       lesson.courseId.toString(),
@@ -274,7 +281,34 @@ export class LessonsService {
       updatePayload['quiz'] = payload.quiz ? this.normalizeQuiz(payload.quiz) : null;
     }
 
+    if ('slides' in payload) {
+      updatePayload['slides'] = (payload.slides || []).map((slide, index) =>
+        this.normalizeSlide(slide, index),
+      );
+    }
+
     return updatePayload;
+  }
+
+  private normalizeSlide(slide: LessonSlideDto, slideIndex: number): LessonSlide {
+    const title = String(slide.title || '').trim();
+    const body = String(slide.body || '').trim();
+
+    if (!title) {
+      throw new BadRequestException(`عنوان الشريحة رقم ${slideIndex + 1} مطلوب`);
+    }
+
+    if (!body) {
+      throw new BadRequestException(`محتوى الشريحة رقم ${slideIndex + 1} مطلوب`);
+    }
+
+    return {
+      id: String(slide.id || '').trim() || randomUUID(),
+      title,
+      body,
+      mediaUrl: String(slide.mediaUrl || '').trim() || null,
+      notes: String(slide.notes || '').trim() || null,
+    };
   }
 
   private normalizeQuiz(quiz?: LessonQuizDto | null): LessonQuiz {
@@ -416,56 +450,4 @@ export class LessonsService {
     return progress;
   }
 
-  private async syncEnrollmentProgress(
-    enrollmentId: string,
-    userId: string,
-    courseId: string,
-    startedAt: Date,
-  ) {
-    const [lessons, completedLessonProgress] = await Promise.all([
-      this.lessonModel.find({ courseId: toObjectId(courseId) }).sort({ order: 1 }).exec(),
-      this.lessonProgressModel.find({
-        userId: toObjectId(userId),
-        courseId: toObjectId(courseId),
-        status: LessonProgressStatus.Completed,
-      }),
-    ]);
-
-    const requiredLessons = lessons.filter((lesson) => lesson.isRequired);
-    const progressPercentage = lessons.length
-      ? Math.round((completedLessonProgress.length / lessons.length) * 100)
-      : 0;
-    const completedRequiredLessons = requiredLessons.every((requiredLesson) =>
-      completedLessonProgress.some(
-        (progress) => progress.lessonId.toString() === requiredLesson._id.toString(),
-      ),
-    );
-
-    const completedAt = completedRequiredLessons ? new Date() : null;
-    const status = completedRequiredLessons ? EnrollmentStatus.Completed : EnrollmentStatus.InProgress;
-
-    await this.enrollmentsService.updateProgress(
-      enrollmentId,
-      progressPercentage,
-      status,
-      startedAt,
-      completedAt,
-    );
-
-    if (completedRequiredLessons) {
-      await this.gamificationService.awardPointsInternal(
-        userId,
-        PointsSourceType.CourseCompleted,
-        courseId,
-        100,
-        'إكمال الدورة التدريبية',
-      );
-    }
-
-    return {
-      success: true,
-      progressPercentage,
-      status,
-    };
-  }
 }

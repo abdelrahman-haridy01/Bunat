@@ -172,6 +172,7 @@ export class ReportsService {
     const managers = users.filter((user) => user.role === UserRole.Manager);
     const admins = users.filter((user) => user.role === UserRole.Admin);
     const hrUsers = users.filter((user) => user.role === UserRole.Hr);
+    const courseManagers = users.filter((user) => user.role === UserRole.CourseManager);
     const completedEnrollments = enrollments.filter((enrollment) => enrollment.status === EnrollmentStatus.Completed);
     const employeesWithManager = employees.filter((user: any) => user.managerId).length;
     const totalTeamMembers = teams.reduce((sum, team: any) => sum + (team.members?.length ?? 0), 0);
@@ -197,6 +198,7 @@ export class ReportsService {
         { role: UserRole.Manager, count: managers.length },
         { role: UserRole.Admin, count: admins.length },
         { role: UserRole.Hr, count: hrUsers.length },
+        { role: UserRole.CourseManager, count: courseManagers.length },
       ].filter((entry) => entry.count > 0),
       enrollmentStatusDistribution: [
         {

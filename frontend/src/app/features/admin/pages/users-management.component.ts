@@ -99,6 +99,7 @@ import {
                 <option value="manager">مدير</option>
                 <option value="admin">مدير نظام</option>
                 <option value="hr">موارد بشرية</option>
+                <option value="course_manager">مدير محتوى</option>
               </select>
               <div class="field-error" *ngIf="hasVisibleError(form.controls.role)">
                 {{ getVisibleErrorMessage(form.controls.role, validationMessages.role) }}
@@ -417,7 +418,13 @@ export class UsersManagementComponent implements OnInit {
   }
 
   private roleLabel(role: string) {
-    return { employee: 'موظف', manager: 'مدير', admin: 'مدير نظام', hr: 'موارد بشرية' }[role] || role;
+    return {
+      employee: 'موظف',
+      manager: 'مدير',
+      admin: 'مدير نظام',
+      hr: 'موارد بشرية',
+      course_manager: 'مدير محتوى',
+    }[role] || role;
   }
 
   private statusLabel(status?: string) {

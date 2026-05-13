@@ -87,6 +87,13 @@ export class AppShellComponent {
       ];
     }
 
+    if (role === 'course_manager') {
+      return [
+        { label: 'الدورات', link: '/content/courses', icon: 'book-open' },
+        { label: 'الإعدادات', link: '/content/settings', icon: 'shield' },
+      ];
+    }
+
     return [
       { label: 'الرئيسية', link: '/admin/dashboard', icon: 'dashboard' },
       { label: 'المستخدمون', link: '/admin/users', icon: 'users' },
@@ -94,6 +101,7 @@ export class AppShellComponent {
       { label: 'الدورات', link: '/admin/courses', icon: 'book-open' },
       { label: 'المؤشرات', link: '/admin/kpis', icon: 'target' },
       { label: 'التكليفات', link: '/admin/assignments', icon: 'calendar' },
+      { label: 'الإعدادات', link: '/admin/settings', icon: 'shield' },
     ];
   });
 

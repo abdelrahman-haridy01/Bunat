@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../environments/environment';
-import { UserSummary } from '../models/domain.models';
+import { AiSettings, UserSummary } from '../models/domain.models';
 
 @Injectable({ providedIn: 'root' })
 export class UsersApiService {
@@ -26,5 +26,17 @@ export class UsersApiService {
 
   deleteUser(id: string) {
     return this.http.delete<{ success: boolean }>(`${environment.apiBaseUrl}/users/${id}`);
+  }
+
+  getAiSettings() {
+    return this.http.get<AiSettings>(`${environment.apiBaseUrl}/users/me/ai-settings`);
+  }
+
+  updateAiSettings(payload: Partial<AiSettings> & { apiKey?: string }) {
+    return this.http.patch<AiSettings>(`${environment.apiBaseUrl}/users/me/ai-settings`, payload);
+  }
+
+  deleteAiSettingsApiKey() {
+    return this.http.delete<{ success: boolean }>(`${environment.apiBaseUrl}/users/me/ai-settings/api-key`);
   }
 }

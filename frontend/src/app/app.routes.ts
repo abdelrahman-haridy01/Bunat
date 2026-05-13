@@ -162,6 +162,42 @@ export const appRoutes: Routes = [
             (m) => m.AssignTrainingComponent,
           ),
       },
+      {
+        path: 'settings',
+        data: { title: 'إعدادات الذكاء الاصطناعي', eyebrow: 'المفاتيح والتفضيلات' },
+        loadComponent: () =>
+          import('./features/admin/pages/ai-settings.component').then((m) => m.AiSettingsComponent),
+      },
+    ],
+  },
+  {
+    path: 'content',
+    component: AppShellComponent,
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['course_manager'] },
+    children: [
+      {
+        path: 'courses',
+        data: { title: 'إدارة الدورات', eyebrow: 'المحتوى والعروض التقديمية' },
+        loadComponent: () =>
+          import('./features/admin/pages/courses-management.component').then(
+            (m) => m.CoursesManagementComponent,
+          ),
+      },
+      {
+        path: 'courses/:id/lessons',
+        data: { title: 'بناء شرائح الدورة', eyebrow: 'الدروس والاختبارات' },
+        loadComponent: () =>
+          import('./features/admin/pages/course-lessons-management.component').then(
+            (m) => m.CourseLessonsManagementComponent,
+          ),
+      },
+      {
+        path: 'settings',
+        data: { title: 'إعدادات الذكاء الاصطناعي', eyebrow: 'المفاتيح والتفضيلات' },
+        loadComponent: () =>
+          import('./features/admin/pages/ai-settings.component').then((m) => m.AiSettingsComponent),
+      },
     ],
   },
   {

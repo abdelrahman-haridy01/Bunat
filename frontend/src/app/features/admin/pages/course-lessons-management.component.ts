@@ -1,10 +1,19 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  WritableSignal,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { finalize, forkJoin } from 'rxjs';
 
-import { Course, Lesson, LessonQuiz } from '../../../core/models/domain.models';
+import { Course, Lesson, LessonQuiz, LessonSlide } from '../../../core/models/domain.models';
 import { CoursesApiService } from '../../../core/services/courses-api.service';
 import { DialogComponent, EmptyStateComponent, IconComponent } from '../../../shared/components';
 import {
@@ -14,31 +23,8 @@ import {
   touchAllControls,
 } from '../../../shared/utils/form-validation';
 
-function lessonContentValidator(control: AbstractControl): ValidationErrors | null {
-  const contentType = control.get('contentType')?.value as Lesson['contentType'] | undefined;
-  const contentUrl = String(control.get('contentUrl')?.value || '').trim();
-  const contentHtml = String(control.get('contentHtml')?.value || '').trim();
-
-  if (!contentType) {
-    return null;
-  }
-
-  if (contentType === 'quiz') {
-    return null;
-  }
-
-  if (contentType === 'video' || contentType === 'pdf') {
-    return contentUrl ? null : { contentMissing: true };
-  }
-
-  return contentUrl || contentHtml ? null : { contentMissing: true };
-}
-
-type EditableQuizOption = {
-  id: string;
-  text: string;
-};
-
+type EditableSlide = LessonSlide;
+type EditableQuizOption = { id: string; text: string };
 type EditableQuizQuestion = {
   id: string;
   prompt: string;
@@ -60,6 +46,12 @@ type EditableQuizQuestion = {
           </div>
           <div class="panel-actions">
             <span class="status-chip info">{{ difficultyLabel(course()?.difficulty || 'beginner') }}</span>
+            <button class="btn btn-secondary" type="button" (click)="openFinalExamDialog()">
+              <span class="btn-content">
+                <app-icon name="award" [size]="18" />
+                <span>{{ course()?.finalQuiz ? 'تعديل الاختبار النهائي' : 'إضافة اختبار نهائي' }}</span>
+              </span>
+            </button>
             <button class="btn btn-primary" type="button" (click)="openCreateLessonDialog()">
               <span class="btn-content">
                 <app-icon name="graduation" [size]="18" />
@@ -82,7 +74,24 @@ type EditableQuizQuestion = {
             <strong>{{ totalDurationMinutes() }}</strong>
             <span>إجمالي الدقائق</span>
           </div>
+          <div class="summary-item">
+            <strong>{{ course()?.finalQuiz?.questions?.length || 0 }}</strong>
+            <span>أسئلة الاختبار النهائي</span>
+          </div>
         </div>
+
+        <article class="final-exam-card" *ngIf="course()?.finalQuiz">
+          <div>
+            <strong>الاختبار النهائي</strong>
+            <p>{{ quizSummaryLabel(course()?.finalQuiz || null) }}</p>
+          </div>
+          <div class="lesson-card__actions">
+            <button class="btn btn-ghost" type="button" (click)="openFinalExamDialog()">تعديل</button>
+            <button class="btn btn-danger" type="button" (click)="removeFinalQuiz()" [disabled]="savingFinalQuiz()">
+              {{ savingFinalQuiz() ? 'جارٍ الحذف...' : 'حذف' }}
+            </button>
+          </div>
+        </article>
 
         <div class="lesson-list" *ngIf="lessons().length; else noLessons">
           <article class="lesson-card" *ngFor="let lesson of lessons()">
@@ -97,26 +106,20 @@ type EditableQuizQuestion = {
                 </span>
               </div>
 
+              <p class="lesson-card__meta" *ngIf="lesson.contentType !== 'quiz'">
+                {{ resolveSlides(lesson).length }} شرائح
+              </p>
               <p class="lesson-card__meta" *ngIf="lesson.contentType === 'quiz'">
-                {{ quizSummaryLabel(lesson) }}
+                {{ quizSummaryLabel(lesson.quiz || null) }}
               </p>
-              <p class="lesson-card__meta" *ngIf="lesson.contentUrl">يوجد رابط أو ملف محفوظ لهذا الدرس.</p>
-              <pre class="lesson-card__content" *ngIf="lesson.contentHtml">{{ previewText(lesson.contentHtml) }}</pre>
-              <p class="lesson-card__meta" *ngIf="!lesson.contentUrl && !lesson.contentHtml && lesson.contentType !== 'quiz'">
-                لم تتم إضافة محتوى لهذا الدرس بعد.
-              </p>
+
+              <div class="slide-preview" *ngIf="lesson.contentType !== 'quiz' && resolveSlides(lesson)[0] as firstSlide">
+                <strong>{{ firstSlide.title }}</strong>
+                <p>{{ previewText(firstSlide.body) }}</p>
+              </div>
             </div>
 
             <div class="lesson-card__actions">
-              <a
-                *ngIf="lesson.contentUrl"
-                class="btn btn-secondary"
-                [href]="lesson.contentUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                فتح المحتوى
-              </a>
               <button class="btn btn-ghost" type="button" (click)="openEditLessonDialog(lesson)">
                 <span class="btn-content">
                   <app-icon name="book-open" [size]="18" />
@@ -142,7 +145,7 @@ type EditableQuizQuestion = {
     <ng-template #noLessons>
       <app-empty-state
         title="لا توجد دروس في هذه الدورة"
-        description="أضف أول درس مع المحتوى أو الملف من هذه الشاشة."
+        description="ابدأ بإضافة أول درس على شكل شرائح أو اختبار."
       />
     </ng-template>
 
@@ -151,8 +154,8 @@ type EditableQuizQuestion = {
       [title]="isEditMode() ? 'تعديل الدرس' : 'إضافة درس'"
       [subtitle]="
         isEditMode()
-          ? 'حدّث بيانات الدرس واحفظ التغييرات.'
-          : 'أدخل بيانات الدرس وأضف المحتوى أو أنشئ اختباراً متعدد الخيارات.'
+          ? 'حدّث بيانات الدرس وشرائحه واحفظ التغييرات.'
+          : 'أنشئ درساً جديداً على شكل شرائح أو اختبار متعدد الخيارات.'
       "
       icon="graduation"
     >
@@ -168,133 +171,23 @@ type EditableQuizQuestion = {
 
           <div class="field">
             <label>نوع المحتوى</label>
-            <select formControlName="contentType" [class.is-invalid]="hasVisibleError(lessonForm.controls.contentType)">
-              <option value="video">فيديو</option>
+            <select formControlName="contentType">
               <option value="article">مقال</option>
+              <option value="task">مهمة</option>
+              <option value="video">فيديو</option>
               <option value="pdf">PDF</option>
               <option value="quiz">اختبار</option>
-              <option value="task">مهمة</option>
             </select>
-            <div class="field-error" *ngIf="hasVisibleError(lessonForm.controls.contentType)">
-              {{ getVisibleErrorMessage(lessonForm.controls.contentType, lessonValidationMessages.contentType) }}
-            </div>
           </div>
 
           <div class="field">
             <label>الترتيب</label>
-            <input type="number" formControlName="order" [class.is-invalid]="hasVisibleError(lessonForm.controls.order)" />
-            <div class="field-error" *ngIf="hasVisibleError(lessonForm.controls.order)">
-              {{ getVisibleErrorMessage(lessonForm.controls.order, lessonValidationMessages.order) }}
-            </div>
+            <input type="number" formControlName="order" />
           </div>
 
           <div class="field">
             <label>المدة</label>
-            <input
-              type="number"
-              formControlName="durationMinutes"
-              [class.is-invalid]="hasVisibleError(lessonForm.controls.durationMinutes)"
-            />
-            <div class="field-error" *ngIf="hasVisibleError(lessonForm.controls.durationMinutes)">
-              {{ getVisibleErrorMessage(lessonForm.controls.durationMinutes, lessonValidationMessages.durationMinutes) }}
-            </div>
-          </div>
-
-          <div class="field field--full" *ngIf="supportsLessonUrl()">
-            <label>رابط المحتوى</label>
-            <input formControlName="contentUrl" placeholder="https://example.com/lesson أو سيتم تعبئته من الملف" />
-            <div class="field-help">{{ lessonUrlHelpText() }}</div>
-          </div>
-
-          <div class="field field--full" *ngIf="lessonUsesTextContent()">
-            <label>نص المحتوى</label>
-            <textarea
-              rows="8"
-              formControlName="contentHtml"
-              [placeholder]="
-                isQuizContentType()
-                  ? 'أضف تعليمات قصيرة للاختبار إن لزم.'
-                  : 'اكتب محتوى الدرس هنا أو الصق HTML بسيطاً.'
-              "
-            ></textarea>
-            <div class="field-help">
-              {{ isQuizContentType() ? 'اختياري لإضافة مقدمة قصيرة قبل أسئلة الاختبار.' : 'للمقالات أو التعليمات النصية أو المحتوى المنسوخ.' }}
-            </div>
-          </div>
-
-          <div class="field field--full" *ngIf="supportsLessonUrl()">
-            <label>رفع ملف المحتوى</label>
-            <input type="file" (change)="onLessonFileSelected($event)" />
-            <div class="field-help" *ngIf="uploadedLessonFileName()">تم اختيار الملف: {{ uploadedLessonFileName() }}</div>
-            <div class="field-help" *ngIf="!uploadedLessonFileName()">
-              يتم حفظ الملف محلياً داخل بيانات الدرس حالياً، وليس في مخزن ملفات خارجي.
-            </div>
-          </div>
-
-          <div class="field field--full" *ngIf="isQuizContentType()">
-            <label>درجة الاجتياز %</label>
-            <input type="number" [value]="quizPassingScore()" min="0" max="100" (input)="updateQuizPassingScore($event)" />
-            <div class="field-help">سيُعتبر الموظف ناجحاً عندما يصل إلى هذه النسبة أو يتجاوزها.</div>
-          </div>
-
-          <div class="field field--full" *ngIf="isQuizContentType()">
-            <div class="quiz-builder">
-              <div class="quiz-builder__header">
-                <div>
-                  <strong>أسئلة الاختبار</strong>
-                  <p class="field-help">أنشئ أسئلة اختيار من متعدد وحدد إجابة صحيحة واحدة لكل سؤال.</p>
-                </div>
-                <button class="btn btn-secondary" type="button" (click)="addQuizQuestion()">
-                  <span class="btn-content">
-                    <app-icon name="graduation" [size]="18" />
-                    <span>إضافة سؤال</span>
-                  </span>
-                </button>
-              </div>
-
-              <div class="quiz-question" *ngFor="let question of quizQuestions(); let questionIndex = index">
-                <div class="quiz-question__header">
-                  <strong>السؤال {{ questionIndex + 1 }}</strong>
-                  <button class="btn btn-ghost" type="button" (click)="removeQuizQuestion(questionIndex)">
-                    حذف السؤال
-                  </button>
-                </div>
-
-                <div class="field">
-                  <label>نص السؤال</label>
-                  <input [value]="question.prompt" (input)="updateQuizQuestionPrompt(questionIndex, $event)" />
-                </div>
-
-                <div class="quiz-option" *ngFor="let option of question.options; let optionIndex = index">
-                  <input
-                    [value]="option.text"
-                    (input)="updateQuizOptionText(questionIndex, optionIndex, $event)"
-                    [placeholder]="'الخيار ' + (optionIndex + 1)"
-                  />
-                  <label class="quiz-option__correct">
-                    <input
-                      type="radio"
-                      [name]="'correct-' + question.id"
-                      [checked]="question.correctOptionId === option.id"
-                      (change)="setCorrectQuizOption(questionIndex, option.id)"
-                    />
-                    <span>الإجابة الصحيحة</span>
-                  </label>
-                  <button
-                    *ngIf="question.options.length > 2"
-                    class="btn btn-ghost"
-                    type="button"
-                    (click)="removeQuizOption(questionIndex, optionIndex)"
-                  >
-                    حذف
-                  </button>
-                </div>
-
-                <button class="btn btn-ghost" type="button" (click)="addQuizOption(questionIndex)">
-                  إضافة خيار
-                </button>
-              </div>
-            </div>
+            <input type="number" formControlName="durationMinutes" />
           </div>
 
           <label class="checkbox-field field--full">
@@ -303,20 +196,244 @@ type EditableQuizQuestion = {
           </label>
         </div>
 
-        <div class="field-error" *ngIf="hasLessonContentError()">
-          {{ lessonContentErrorMessage() }}
+        <div class="message-box info" *ngIf="legacyConversionNotice()">
+          {{ legacyConversionNotice() }}
         </div>
-        <div class="field-error" *ngIf="quizValidationError()">
-          {{ quizValidationError() }}
-        </div>
+
+        <section class="builder" *ngIf="!isQuizContentType(); else quizBuilderBlock">
+          <div class="builder__header">
+            <div>
+              <strong>شرائح الدرس</strong>
+              <p class="field-help">أضف محتوى الدرس على هيئة شرائح قابلة للتنقل في واجهة المتعلم.</p>
+            </div>
+            <button class="btn btn-secondary" type="button" (click)="addSlide()">
+              <span class="btn-content">
+                <app-icon name="book-open" [size]="18" />
+                <span>إضافة شريحة</span>
+              </span>
+            </button>
+          </div>
+
+          <article class="builder-card" *ngFor="let slide of slides(); let slideIndex = index">
+            <div class="builder-card__header">
+              <strong>الشريحة {{ slideIndex + 1 }}</strong>
+              <div class="builder-card__actions">
+                <button class="btn btn-ghost" type="button" (click)="moveSlide(slideIndex, -1)" [disabled]="slideIndex === 0">
+                  للأعلى
+                </button>
+                <button
+                  class="btn btn-ghost"
+                  type="button"
+                  (click)="moveSlide(slideIndex, 1)"
+                  [disabled]="slideIndex === slides().length - 1"
+                >
+                  للأسفل
+                </button>
+                <button class="btn btn-danger" type="button" (click)="removeSlide(slideIndex)" [disabled]="slides().length === 1">
+                  حذف
+                </button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>عنوان الشريحة</label>
+              <input [value]="slide.title" (input)="updateSlideField(slideIndex, 'title', $event)" />
+            </div>
+
+            <div class="field">
+              <label>محتوى الشريحة</label>
+              <textarea rows="6" [value]="slide.body" (input)="updateSlideField(slideIndex, 'body', $event)"></textarea>
+            </div>
+
+            <div class="field">
+              <label>رابط الوسائط</label>
+              <input [value]="slide.mediaUrl || ''" (input)="updateSlideField(slideIndex, 'mediaUrl', $event)" />
+            </div>
+
+            <div class="field">
+              <label>ملاحظات إضافية</label>
+              <textarea rows="3" [value]="slide.notes || ''" (input)="updateSlideField(slideIndex, 'notes', $event)"></textarea>
+            </div>
+          </article>
+
+          <div class="field-error" *ngIf="slidesValidationError()">
+            {{ slidesValidationError() }}
+          </div>
+        </section>
+
+        <ng-template #quizBuilderBlock>
+          <section class="builder">
+            <div class="builder__header">
+              <div>
+                <strong>تصميم الاختبار</strong>
+                <p class="field-help">واجهة تحرير مبسطة لإنشاء أسئلة احترافية وواضحة.</p>
+              </div>
+              <div class="quiz-metrics">
+                <label>الاجتياز %</label>
+                <input type="number" [value]="quizPassingScore()" min="0" max="100" (input)="updateQuizPassingScore($event)" />
+              </div>
+            </div>
+
+            <article class="builder-card quiz-card" *ngFor="let question of quizQuestions(); let questionIndex = index">
+              <div class="builder-card__header">
+                <strong>السؤال {{ questionIndex + 1 }}</strong>
+                <div class="builder-card__actions">
+                  <button
+                    class="btn btn-ghost"
+                    type="button"
+                    (click)="moveQuizQuestion(questionIndex, -1)"
+                    [disabled]="questionIndex === 0"
+                  >
+                    للأعلى
+                  </button>
+                  <button
+                    class="btn btn-ghost"
+                    type="button"
+                    (click)="moveQuizQuestion(questionIndex, 1)"
+                    [disabled]="questionIndex === quizQuestions().length - 1"
+                  >
+                    للأسفل
+                  </button>
+                  <button class="btn btn-danger" type="button" (click)="removeQuizQuestion(questionIndex)" [disabled]="quizQuestions().length === 1">
+                    حذف
+                  </button>
+                </div>
+              </div>
+
+              <div class="field">
+                <label>نص السؤال</label>
+                <input [value]="question.prompt" (input)="updateQuizQuestionPrompt(questionIndex, $event)" />
+              </div>
+
+              <div class="quiz-option-card" *ngFor="let option of question.options; let optionIndex = index">
+                <input
+                  [value]="option.text"
+                  (input)="updateQuizOptionText(questionIndex, optionIndex, $event)"
+                  [placeholder]="'الخيار ' + (optionIndex + 1)"
+                />
+                <label class="quiz-option-card__correct">
+                  <input
+                    type="radio"
+                    [name]="'correct-' + question.id"
+                    [checked]="question.correctOptionId === option.id"
+                    (change)="setCorrectQuizOption(questionIndex, option.id)"
+                  />
+                  <span>صحيح</span>
+                </label>
+                <button
+                  class="btn btn-ghost"
+                  type="button"
+                  (click)="removeQuizOption(questionIndex, optionIndex)"
+                  [disabled]="question.options.length === 2"
+                >
+                  حذف
+                </button>
+              </div>
+
+              <button class="btn btn-secondary" type="button" (click)="addQuizOption(questionIndex)">إضافة خيار</button>
+            </article>
+
+            <div class="builder__footer">
+              <button class="btn btn-secondary" type="button" (click)="addQuizQuestion()">إضافة سؤال</button>
+            </div>
+
+            <div class="field-error" *ngIf="quizValidationError()">
+              {{ quizValidationError() }}
+            </div>
+          </section>
+        </ng-template>
 
         <div class="dialog-actions">
           <button class="btn btn-ghost" type="button" (click)="closeLessonDialog()">إلغاء</button>
-          <button class="btn btn-primary" type="submit" [disabled]="lessonForm.invalid || savingLesson()">
+          <button class="btn btn-primary" type="submit" [disabled]="savingLesson()">
             {{ savingLesson() ? 'جارٍ الحفظ...' : isEditMode() ? 'حفظ التعديلات' : 'إضافة الدرس' }}
           </button>
         </div>
       </form>
+    </app-dialog>
+
+    <app-dialog
+      #finalExamDialog
+      title="الاختبار النهائي"
+      subtitle="حدّد أسئلة الاختبار النهائي الذي سيشترط اجتيازه لإكمال الدورة."
+      icon="award"
+    >
+      <section class="builder">
+        <div class="builder__header">
+          <div>
+            <strong>أسئلة الاختبار النهائي</strong>
+            <p class="field-help">سيظهر هذا الاختبار بعد إنهاء الدروس المطلوبة.</p>
+          </div>
+          <div class="quiz-metrics">
+            <label>الاجتياز %</label>
+            <input type="number" [value]="finalQuizPassingScore()" min="0" max="100" (input)="updateFinalQuizPassingScore($event)" />
+          </div>
+        </div>
+
+        <article class="builder-card quiz-card" *ngFor="let question of finalQuizQuestions(); let questionIndex = index">
+          <div class="builder-card__header">
+            <strong>السؤال {{ questionIndex + 1 }}</strong>
+            <div class="builder-card__actions">
+              <button class="btn btn-ghost" type="button" (click)="moveFinalQuizQuestion(questionIndex, -1)" [disabled]="questionIndex === 0">
+                للأعلى
+              </button>
+              <button class="btn btn-ghost" type="button" (click)="moveFinalQuizQuestion(questionIndex, 1)" [disabled]="questionIndex === finalQuizQuestions().length - 1">
+                للأسفل
+              </button>
+              <button class="btn btn-danger" type="button" (click)="removeFinalQuizQuestion(questionIndex)" [disabled]="finalQuizQuestions().length === 1">
+                حذف
+              </button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>نص السؤال</label>
+            <input [value]="question.prompt" (input)="updateFinalQuizQuestionPrompt(questionIndex, $event)" />
+          </div>
+
+          <div class="quiz-option-card" *ngFor="let option of question.options; let optionIndex = index">
+            <input
+              [value]="option.text"
+              (input)="updateFinalQuizOptionText(questionIndex, optionIndex, $event)"
+              [placeholder]="'الخيار ' + (optionIndex + 1)"
+            />
+            <label class="quiz-option-card__correct">
+              <input
+                type="radio"
+                [name]="'final-correct-' + question.id"
+                [checked]="question.correctOptionId === option.id"
+                (change)="setCorrectFinalQuizOption(questionIndex, option.id)"
+              />
+              <span>صحيح</span>
+            </label>
+            <button
+              class="btn btn-ghost"
+              type="button"
+              (click)="removeFinalQuizOption(questionIndex, optionIndex)"
+              [disabled]="question.options.length === 2"
+            >
+              حذف
+            </button>
+          </div>
+
+          <button class="btn btn-secondary" type="button" (click)="addFinalQuizOption(questionIndex)">إضافة خيار</button>
+        </article>
+
+        <div class="builder__footer">
+          <button class="btn btn-secondary" type="button" (click)="addFinalQuizQuestion()">إضافة سؤال</button>
+        </div>
+
+        <div class="field-error" *ngIf="finalQuizValidationError()">
+          {{ finalQuizValidationError() }}
+        </div>
+      </section>
+
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" type="button" (click)="closeFinalExamDialog()">إلغاء</button>
+        <button class="btn btn-primary" type="button" (click)="saveFinalQuiz()" [disabled]="savingFinalQuiz()">
+          {{ savingFinalQuiz() ? 'جارٍ الحفظ...' : 'حفظ الاختبار النهائي' }}
+        </button>
+      </div>
     </app-dialog>
 
     <app-dialog
@@ -349,46 +466,69 @@ type EditableQuizQuestion = {
 
       .summary-strip {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 1rem;
         margin-bottom: 1.25rem;
       }
 
-      .summary-item {
-        padding: 1rem;
+      .summary-item,
+      .final-exam-card,
+      .slide-preview,
+      .builder__header,
+      .builder-card {
+        border: 1px solid var(--color-neutral-200);
         border-radius: var(--radius-sm);
         background: var(--color-neutral-50);
-        border: 1px solid var(--color-neutral-200);
+      }
+
+      .summary-item {
+        padding: 1rem;
       }
 
       .summary-item strong {
         display: block;
-        font-size: 1.25rem;
-        color: var(--color-primary-text);
+        font-size: 1.2rem;
       }
 
-      .summary-item span {
+      .summary-item span,
+      .field-help,
+      .lesson-card__meta,
+      .final-exam-card p,
+      .slide-preview p {
         color: var(--color-secondary-paragraph);
       }
 
-      .lesson-list {
+      .final-exam-card,
+      .lesson-card,
+      .builder__header,
+      .builder-card__header,
+      .quiz-option-card {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      .final-exam-card {
+        padding: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .lesson-list,
+      .builder {
         display: grid;
         gap: 1rem;
       }
 
       .lesson-card {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 1rem;
         padding: 1rem;
-        border-radius: var(--radius-sm);
         border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-sm);
       }
 
       .lesson-card__body {
-        min-width: 0;
         flex: 1;
+        min-width: 0;
       }
 
       .lesson-card__header {
@@ -400,87 +540,77 @@ type EditableQuizQuestion = {
 
       .lesson-card p {
         margin: 0.35rem 0 0;
-        color: var(--color-secondary-paragraph);
       }
 
-      .lesson-card__meta {
-        font-size: 0.92rem;
+      .slide-preview {
+        margin-top: 0.9rem;
+        padding: 0.9rem;
       }
 
-      .lesson-card__content {
-        margin: 0.85rem 0 0;
-        padding: 0.85rem;
-        white-space: pre-wrap;
-        border-radius: var(--radius-sm);
-        background: var(--color-neutral-50);
-        border: 1px solid var(--color-neutral-200);
-        color: var(--color-primary-text);
-        font-family: inherit;
+      .slide-preview strong {
+        display: block;
+        margin-bottom: 0.35rem;
       }
 
-      .lesson-card__actions {
+      .lesson-card__actions,
+      .builder-card__actions {
         display: flex;
         align-items: center;
         gap: 0.75rem;
         flex-wrap: wrap;
       }
 
-      .field--full {
-        grid-column: 1 / -1;
-      }
-
-      .field-help {
-        margin-top: 0.45rem;
-        font-size: 0.9rem;
-        color: var(--color-secondary-paragraph);
-      }
-
       .checkbox-field {
         display: flex;
         align-items: center;
         gap: 0.65rem;
-        color: var(--color-primary-text);
       }
 
-      .quiz-builder {
-        display: grid;
-        gap: 1rem;
+      .field--full {
+        grid-column: 1 / -1;
       }
 
-      .quiz-builder__header,
-      .quiz-question__header,
-      .quiz-option {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-      }
-
-      .quiz-builder__header {
+      .builder__header,
+      .builder-card {
         padding: 1rem;
-        border: 1px solid var(--color-neutral-200);
-        border-radius: var(--radius-sm);
-        background: var(--color-neutral-50);
       }
 
-      .quiz-question {
+      .builder-card {
         display: grid;
+      }
+
+      .quiz-card {
         gap: 0.9rem;
-        padding: 1rem;
-        border: 1px solid var(--color-neutral-200);
-        border-radius: var(--radius-sm);
       }
 
-      .quiz-option input[type='text'],
-      .quiz-option input:not([type]) {
+      .quiz-option-card {
+        align-items: center;
+      }
+
+      .quiz-option-card input:first-child {
         flex: 1;
       }
 
-      .quiz-option__correct {
+      .quiz-option-card__correct {
         display: flex;
         align-items: center;
         gap: 0.45rem;
         white-space: nowrap;
+      }
+
+      .quiz-metrics {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+      }
+
+      .quiz-metrics input {
+        width: 88px;
+      }
+
+      .builder__footer {
+        display: flex;
+        justify-content: flex-start;
       }
 
       .status-chip.muted {
@@ -488,18 +618,25 @@ type EditableQuizQuestion = {
         color: var(--color-secondary-paragraph);
       }
 
-      @media (max-width: 720px) {
+      @media (max-width: 860px) {
         .summary-strip {
-          grid-template-columns: 1fr;
+          grid-template-columns: 1fr 1fr;
         }
 
+        .final-exam-card,
         .lesson-card,
         .lesson-card__header,
-        .quiz-builder__header,
-        .quiz-question__header,
-        .quiz-option {
+        .builder__header,
+        .builder-card__header,
+        .quiz-option-card {
           flex-direction: column;
           align-items: stretch;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .summary-strip {
+          grid-template-columns: 1fr;
         }
       }
     `,
@@ -512,17 +649,24 @@ export class CourseLessonsManagementComponent implements OnInit {
   private readonly coursesApi = inject(CoursesApiService);
 
   protected readonly lessonDialog = viewChild.required<DialogComponent>('lessonDialog');
+  protected readonly finalExamDialog = viewChild.required<DialogComponent>('finalExamDialog');
   protected readonly deleteDialog = viewChild.required<DialogComponent>('deleteDialog');
   protected readonly course = signal<Course | null>(null);
   protected readonly lessons = signal<Lesson[]>([]);
   protected readonly editingLesson = signal<Lesson | null>(null);
   protected readonly deletingLesson = signal<Lesson | null>(null);
   protected readonly savingLesson = signal(false);
+  protected readonly savingFinalQuiz = signal(false);
   protected readonly deletingLessonInFlight = signal(false);
-  protected readonly uploadedLessonFileName = signal('');
+  protected readonly slides = signal<EditableSlide[]>([]);
+  protected readonly slidesValidationError = signal('');
+  protected readonly legacyConversionNotice = signal('');
   protected readonly quizQuestions = signal<EditableQuizQuestion[]>([]);
   protected readonly quizPassingScore = signal(70);
   protected readonly quizValidationError = signal('');
+  protected readonly finalQuizQuestions = signal<EditableQuizQuestion[]>([]);
+  protected readonly finalQuizPassingScore = signal(70);
+  protected readonly finalQuizValidationError = signal('');
   protected readonly isEditMode = computed(() => !!this.editingLesson());
   protected readonly requiredLessonsCount = computed(() => this.lessons().filter((lesson) => lesson.isRequired).length);
   protected readonly totalDurationMinutes = computed(() =>
@@ -531,41 +675,24 @@ export class CourseLessonsManagementComponent implements OnInit {
   protected readonly hasVisibleError = hasVisibleError;
   protected readonly getVisibleErrorMessage = getVisibleErrorMessage;
   protected readonly lessonValidationMessages = {
-    title: {
-      required: 'أدخل عنوان الدرس.',
-    },
-    contentType: {
-      required: 'اختر نوع المحتوى.',
-    },
-    order: {
-      required: 'أدخل ترتيب الدرس.',
-      min: 'ترتيب الدرس يجب أن يبدأ من 1.',
-    },
-    durationMinutes: {
-      required: 'أدخل مدة الدرس.',
-      min: 'مدة الدرس يجب أن تكون دقيقة واحدة على الأقل.',
-    },
+    title: { required: 'أدخل عنوان الدرس.' },
+    order: { required: 'أدخل ترتيب الدرس.' },
+    durationMinutes: { required: 'أدخل مدة الدرس.' },
   };
-  protected readonly lessonForm = this.fb.nonNullable.group(
-    {
-      title: ['', Validators.required],
-      contentType: ['article' as Lesson['contentType'], Validators.required],
-      order: [1, [Validators.required, Validators.min(1)]],
-      durationMinutes: [10, [Validators.required, Validators.min(1)]],
-      contentUrl: [''],
-      contentHtml: [''],
-      isRequired: [true],
-    },
-    { validators: lessonContentValidator },
-  );
+
+  protected readonly lessonForm = this.fb.nonNullable.group({
+    title: ['', Validators.required],
+    contentType: ['article' as Lesson['contentType'], Validators.required],
+    order: [1, [Validators.required, Validators.min(1)]],
+    durationMinutes: [10, [Validators.required, Validators.min(1)]],
+    isRequired: [true],
+  });
 
   ngOnInit() {
     const courseId = this.route.snapshot.paramMap.get('id');
-    if (!courseId) {
-      return;
+    if (courseId) {
+      this.loadData(courseId);
     }
-
-    this.loadData(courseId);
   }
 
   protected openCreateLessonDialog() {
@@ -575,12 +702,11 @@ export class CourseLessonsManagementComponent implements OnInit {
       contentType: 'article',
       order: this.lessons().length + 1,
       durationMinutes: 10,
-      contentUrl: '',
-      contentHtml: '',
       isRequired: true,
     });
-    this.uploadedLessonFileName.set('');
+    this.resetSlides();
     this.resetQuizBuilder();
+    this.legacyConversionNotice.set('');
     clearControlState(this.lessonForm);
     this.lessonDialog().open();
   }
@@ -592,31 +718,36 @@ export class CourseLessonsManagementComponent implements OnInit {
       contentType: lesson.contentType,
       order: lesson.order,
       durationMinutes: lesson.durationMinutes,
-      contentUrl: lesson.contentUrl || '',
-      contentHtml: lesson.contentHtml || '',
       isRequired: lesson.isRequired,
     });
-    this.uploadedLessonFileName.set('');
-    this.loadQuizBuilder(lesson.quiz || null);
+
+    if (lesson.contentType === 'quiz') {
+      this.loadQuizBuilder(lesson.quiz || null);
+      this.resetSlides();
+      this.legacyConversionNotice.set('');
+    } else {
+      const { slides, notice } = this.buildEditableSlidesFromLesson(lesson);
+      this.slides.set(slides);
+      this.resetQuizBuilder();
+      this.legacyConversionNotice.set(notice);
+    }
+
     clearControlState(this.lessonForm);
     this.lessonDialog().open();
   }
 
   protected closeLessonDialog() {
-    this.uploadedLessonFileName.set('');
     this.editingLesson.set(null);
-    this.resetQuizBuilder();
     this.lessonDialog().close();
   }
 
-  protected openDeleteLessonDialog(lesson: Lesson) {
-    this.deletingLesson.set(lesson);
-    this.deleteDialog().open();
+  protected openFinalExamDialog() {
+    this.loadFinalQuizBuilder(this.course()?.finalQuiz || null);
+    this.finalExamDialog().open();
   }
 
-  protected closeDeleteLessonDialog() {
-    this.deletingLesson.set(null);
-    this.deleteDialog().close();
+  protected closeFinalExamDialog() {
+    this.finalExamDialog().close();
   }
 
   protected submitLesson() {
@@ -631,36 +762,82 @@ export class CourseLessonsManagementComponent implements OnInit {
     }
 
     const formValue = this.lessonForm.getRawValue();
-    const isQuiz = formValue.contentType === 'quiz';
-    const quiz = isQuiz ? this.buildQuizPayload() : null;
-    if (isQuiz && !quiz) {
+    const isQuiz = this.isQuizContentType();
+    const quiz = isQuiz ? this.buildQuizPayload(this.quizQuestions(), this.quizPassingScore(), this.quizValidationError) : null;
+    const slides = isQuiz ? [] : this.buildSlidesPayload();
+    if ((isQuiz && !quiz) || (!isQuiz && !slides)) {
       return;
     }
 
-    const payload = {
+    const payload: Partial<Lesson> & { courseId: string; title: string; contentType: Lesson['contentType'] } = {
       courseId,
       title: formValue.title.trim(),
       contentType: formValue.contentType,
       order: Number(formValue.order),
       durationMinutes: Number(formValue.durationMinutes),
       isRequired: formValue.isRequired,
-      contentUrl: isQuiz ? undefined : formValue.contentUrl.trim() || undefined,
-      contentHtml: formValue.contentHtml.trim() || undefined,
       quiz,
+      slides: slides || undefined,
+      contentUrl: !isQuiz ? this.pickLegacyContentUrl(slides || []) : undefined,
+      contentHtml: !isQuiz ? this.buildLegacyContentHtml(slides || []) : undefined,
     };
 
-    const editingLessonId = this.objectId(this.editingLesson() || {});
-    const request = editingLessonId
-      ? this.coursesApi.updateLesson(editingLessonId, payload)
-      : this.coursesApi.createLesson(payload);
+    const lessonId = this.objectId(this.editingLesson() || {});
+    const request = lessonId ? this.coursesApi.updateLesson(lessonId, payload) : this.coursesApi.createLesson(payload);
 
     this.savingLesson.set(true);
-    request.pipe(finalize(() => this.savingLesson.set(false))).subscribe({
-      next: () => {
-        this.closeLessonDialog();
-        this.loadData(courseId);
-      },
+    request.pipe(finalize(() => this.savingLesson.set(false))).subscribe(() => {
+      this.closeLessonDialog();
+      this.loadData(courseId);
     });
+  }
+
+  protected saveFinalQuiz() {
+    const courseId = this.route.snapshot.paramMap.get('id');
+    if (!courseId || this.savingFinalQuiz()) {
+      return;
+    }
+
+    const finalQuiz = this.buildQuizPayload(
+      this.finalQuizQuestions(),
+      this.finalQuizPassingScore(),
+      this.finalQuizValidationError,
+    );
+    if (!finalQuiz) {
+      return;
+    }
+
+    this.savingFinalQuiz.set(true);
+    this.coursesApi
+      .updateCourse(courseId, { finalQuiz })
+      .pipe(finalize(() => this.savingFinalQuiz.set(false)))
+      .subscribe(() => {
+        this.closeFinalExamDialog();
+        this.loadData(courseId);
+      });
+  }
+
+  protected removeFinalQuiz() {
+    const courseId = this.route.snapshot.paramMap.get('id');
+    if (!courseId || this.savingFinalQuiz()) {
+      return;
+    }
+
+    this.savingFinalQuiz.set(true);
+    this.coursesApi
+      .updateCourse(courseId, { finalQuiz: null })
+      .pipe(finalize(() => this.savingFinalQuiz.set(false)))
+      .subscribe(() => this.loadData(courseId));
+  }
+
+  protected openDeleteLessonDialog(lesson: Lesson) {
+    this.deletingLesson.set(lesson);
+    this.deleteDialog().open();
+  }
+
+  protected closeDeleteLessonDialog() {
+    this.deletingLesson.set(null);
+    this.deleteDialog().close();
   }
 
   protected confirmDeleteLesson() {
@@ -674,51 +851,44 @@ export class CourseLessonsManagementComponent implements OnInit {
     this.coursesApi
       .deleteLesson(lessonId)
       .pipe(finalize(() => this.deletingLessonInFlight.set(false)))
-      .subscribe({
-        next: () => {
-          this.closeDeleteLessonDialog();
-          this.loadData(courseId);
-        },
+      .subscribe(() => {
+        this.closeDeleteLessonDialog();
+        this.loadData(courseId);
       });
-  }
-
-  protected lessonUsesTextContent() {
-    return this.lessonForm.controls.contentType.value !== 'video' && this.lessonForm.controls.contentType.value !== 'pdf';
   }
 
   protected isQuizContentType() {
     return this.lessonForm.controls.contentType.value === 'quiz';
   }
 
-  protected supportsLessonUrl() {
-    return !this.isQuizContentType();
+  protected addSlide() {
+    this.slides.update((currentSlides) => [...currentSlides, this.createEmptySlide()]);
+    this.slidesValidationError.set('');
   }
 
-  protected lessonUrlHelpText() {
-    return this.lessonUsesTextContent()
-      ? 'اختياري إذا كتبت نص المحتوى، ومطلوب إذا كنت تريد فتح ملف أو رابط خارجي.'
-      : 'مطلوب لهذا النوع. يمكنك لصق رابط مباشر أو اختيار ملف من جهازك.';
+  protected removeSlide(slideIndex: number) {
+    this.slides.update((currentSlides) =>
+      currentSlides.length === 1 ? currentSlides : currentSlides.filter((_, index) => index !== slideIndex),
+    );
   }
 
-  protected hasLessonContentError() {
-    const { contentType, contentUrl, contentHtml } = this.lessonForm.controls;
-    return this.lessonForm.hasError('contentMissing') && (contentType.touched || contentUrl.touched || contentHtml.touched);
+  protected moveSlide(slideIndex: number, direction: -1 | 1) {
+    this.slides.update((currentSlides) => this.moveItem(currentSlides, slideIndex, direction));
   }
 
-  protected lessonContentErrorMessage() {
-    if (this.isQuizContentType()) {
-      return '';
-    }
-
-    return this.lessonUsesTextContent()
-      ? 'أضف نص المحتوى أو رابطاً أو ملفاً للدرس.'
-      : 'أضف رابط المحتوى أو ارفع ملفاً لهذا الدرس.';
-  }
-
-  protected updateQuizPassingScore(event: Event) {
-    const value = Number((event.target as HTMLInputElement | null)?.value || 0);
-    this.quizPassingScore.set(Math.min(100, Math.max(0, value)));
-    this.quizValidationError.set('');
+  protected updateSlideField(slideIndex: number, key: keyof EditableSlide, event: Event) {
+    const value = (event.target as HTMLInputElement | HTMLTextAreaElement | null)?.value || '';
+    this.slides.update((currentSlides) =>
+      currentSlides.map((slide, index) =>
+        index === slideIndex
+          ? {
+              ...slide,
+              [key]: value,
+            }
+          : slide,
+      ),
+    );
+    this.slidesValidationError.set('');
   }
 
   protected addQuizQuestion() {
@@ -727,16 +897,19 @@ export class CourseLessonsManagementComponent implements OnInit {
   }
 
   protected removeQuizQuestion(questionIndex: number) {
-    this.quizQuestions.update((questions) => questions.filter((_, index) => index !== questionIndex));
-    this.quizValidationError.set('');
+    this.quizQuestions.update((questions) =>
+      questions.length === 1 ? questions : questions.filter((_, index) => index !== questionIndex),
+    );
+  }
+
+  protected moveQuizQuestion(questionIndex: number, direction: -1 | 1) {
+    this.quizQuestions.update((questions) => this.moveItem(questions, questionIndex, direction));
   }
 
   protected updateQuizQuestionPrompt(questionIndex: number, event: Event) {
     const value = (event.target as HTMLInputElement | null)?.value || '';
     this.quizQuestions.update((questions) =>
-      questions.map((question, index) =>
-        index === questionIndex ? { ...question, prompt: value } : question,
-      ),
+      questions.map((question, index) => (index === questionIndex ? { ...question, prompt: value } : question)),
     );
     this.quizValidationError.set('');
   }
@@ -744,37 +917,28 @@ export class CourseLessonsManagementComponent implements OnInit {
   protected addQuizOption(questionIndex: number) {
     this.quizQuestions.update((questions) =>
       questions.map((question, index) =>
-        index === questionIndex
-          ? {
-              ...question,
-              options: [...question.options, this.createEmptyQuizOption()],
-            }
-          : question,
+        index === questionIndex ? { ...question, options: [...question.options, this.createEmptyQuizOption()] } : question,
       ),
     );
-    this.quizValidationError.set('');
   }
 
   protected removeQuizOption(questionIndex: number, optionIndex: number) {
     this.quizQuestions.update((questions) =>
       questions.map((question, index) => {
-        if (index !== questionIndex || question.options.length <= 2) {
+        if (index !== questionIndex || question.options.length === 2) {
           return question;
         }
 
-        const nextOptions = question.options.filter((_, currentOptionIndex) => currentOptionIndex !== optionIndex);
-        const nextCorrectOptionId = nextOptions.some((option) => option.id === question.correctOptionId)
-          ? question.correctOptionId
-          : nextOptions[0]?.id || '';
-
+        const nextOptions = question.options.filter((_, currentIndex) => currentIndex !== optionIndex);
         return {
           ...question,
           options: nextOptions,
-          correctOptionId: nextCorrectOptionId,
+          correctOptionId: nextOptions.some((option) => option.id === question.correctOptionId)
+            ? question.correctOptionId
+            : nextOptions[0]?.id || '',
         };
       }),
     );
-    this.quizValidationError.set('');
   }
 
   protected updateQuizOptionText(questionIndex: number, optionIndex: number, event: Event) {
@@ -784,14 +948,13 @@ export class CourseLessonsManagementComponent implements OnInit {
         index === questionIndex
           ? {
               ...question,
-              options: question.options.map((option, currentOptionIndex) =>
-                currentOptionIndex === optionIndex ? { ...option, text: value } : option,
+              options: question.options.map((option, currentIndex) =>
+                currentIndex === optionIndex ? { ...option, text: value } : option,
               ),
             }
           : question,
       ),
     );
-    this.quizValidationError.set('');
   }
 
   protected setCorrectQuizOption(questionIndex: number, optionId: string) {
@@ -800,57 +963,108 @@ export class CourseLessonsManagementComponent implements OnInit {
         index === questionIndex ? { ...question, correctOptionId: optionId } : question,
       ),
     );
+  }
+
+  protected updateQuizPassingScore(event: Event) {
+    this.quizPassingScore.set(this.normalizeScoreInput(event));
     this.quizValidationError.set('');
   }
 
-  protected onLessonFileSelected(event: Event) {
-    const input = event.target as HTMLInputElement | null;
-    const file = input?.files?.[0];
-    if (!file) {
-      return;
-    }
+  protected addFinalQuizQuestion() {
+    this.finalQuizQuestions.update((questions) => [...questions, this.createEmptyQuizQuestion()]);
+    this.finalQuizValidationError.set('');
+  }
 
-    this.uploadedLessonFileName.set(file.name);
-    const textLikeFile = file.type.startsWith('text/') || /\.(txt|md|html|htm|json|csv)$/i.test(file.name);
-    const reader = new FileReader();
+  protected removeFinalQuizQuestion(questionIndex: number) {
+    this.finalQuizQuestions.update((questions) =>
+      questions.length === 1 ? questions : questions.filter((_, index) => index !== questionIndex),
+    );
+  }
 
-    reader.onload = () => {
-      const result = typeof reader.result === 'string' ? reader.result : '';
-      if (!result) {
-        return;
-      }
+  protected moveFinalQuizQuestion(questionIndex: number, direction: -1 | 1) {
+    this.finalQuizQuestions.update((questions) => this.moveItem(questions, questionIndex, direction));
+  }
 
-      if (this.lessonUsesTextContent() && textLikeFile) {
-        this.lessonForm.patchValue({
-          contentHtml: result,
-          contentUrl: '',
-        });
-      } else {
-        this.lessonForm.patchValue({
-          contentUrl: result,
-        });
-      }
+  protected updateFinalQuizQuestionPrompt(questionIndex: number, event: Event) {
+    const value = (event.target as HTMLInputElement | null)?.value || '';
+    this.finalQuizQuestions.update((questions) =>
+      questions.map((question, index) => (index === questionIndex ? { ...question, prompt: value } : question)),
+    );
+    this.finalQuizValidationError.set('');
+  }
 
-      this.lessonForm.controls.contentUrl.markAsTouched();
-      this.lessonForm.controls.contentHtml.markAsTouched();
-      this.lessonForm.updateValueAndValidity();
-    };
+  protected addFinalQuizOption(questionIndex: number) {
+    this.finalQuizQuestions.update((questions) =>
+      questions.map((question, index) =>
+        index === questionIndex ? { ...question, options: [...question.options, this.createEmptyQuizOption()] } : question,
+      ),
+    );
+  }
 
-    if (this.lessonUsesTextContent() && textLikeFile) {
-      reader.readAsText(file);
-      return;
-    }
+  protected removeFinalQuizOption(questionIndex: number, optionIndex: number) {
+    this.finalQuizQuestions.update((questions) =>
+      questions.map((question, index) => {
+        if (index !== questionIndex || question.options.length === 2) {
+          return question;
+        }
 
-    reader.readAsDataURL(file);
+        const nextOptions = question.options.filter((_, currentIndex) => currentIndex !== optionIndex);
+        return {
+          ...question,
+          options: nextOptions,
+          correctOptionId: nextOptions.some((option) => option.id === question.correctOptionId)
+            ? question.correctOptionId
+            : nextOptions[0]?.id || '',
+        };
+      }),
+    );
+  }
+
+  protected updateFinalQuizOptionText(questionIndex: number, optionIndex: number, event: Event) {
+    const value = (event.target as HTMLInputElement | null)?.value || '';
+    this.finalQuizQuestions.update((questions) =>
+      questions.map((question, index) =>
+        index === questionIndex
+          ? {
+              ...question,
+              options: question.options.map((option, currentIndex) =>
+                currentIndex === optionIndex ? { ...option, text: value } : option,
+              ),
+            }
+          : question,
+      ),
+    );
+  }
+
+  protected setCorrectFinalQuizOption(questionIndex: number, optionId: string) {
+    this.finalQuizQuestions.update((questions) =>
+      questions.map((question, index) =>
+        index === questionIndex ? { ...question, correctOptionId: optionId } : question,
+      ),
+    );
+  }
+
+  protected updateFinalQuizPassingScore(event: Event) {
+    this.finalQuizPassingScore.set(this.normalizeScoreInput(event));
+    this.finalQuizValidationError.set('');
+  }
+
+  protected resolveSlides(lesson: Lesson) {
+    return lesson.slides?.length ? lesson.slides : this.buildEditableSlidesFromLesson(lesson).slides;
+  }
+
+  protected previewText(value?: string | null) {
+    const normalizedValue = String(value || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    return normalizedValue.length > 180 ? `${normalizedValue.slice(0, 180)}...` : normalizedValue;
   }
 
   protected contentTypeLabel(value: Lesson['contentType']) {
     return {
-      video: 'فيديو',
       article: 'مقال',
+      task: 'مهمة',
+      video: 'فيديو',
       pdf: 'PDF',
       quiz: 'اختبار',
-      task: 'مهمة',
     }[value] || value;
   }
 
@@ -862,84 +1076,75 @@ export class CourseLessonsManagementComponent implements OnInit {
     }[value] || value;
   }
 
-  protected previewText(value?: string | null) {
-    if (!value) {
-      return '';
+  protected quizSummaryLabel(quiz: LessonQuiz | null) {
+    if (!quiz) {
+      return 'لا يوجد اختبار';
     }
 
-    return value.length > 280 ? `${value.slice(0, 280)}...` : value;
+    return `${quiz.questions.length} أسئلة • اجتياز من ${quiz.passingScorePercentage}%`;
   }
 
-  protected quizSummaryLabel(lesson: Lesson) {
-    const questionsCount = lesson.quiz?.questions?.length || 0;
-    const passingScore = lesson.quiz?.passingScorePercentage ?? 70;
-    return `${questionsCount} أسئلة • اجتياز من ${passingScore}%`;
-  }
-
-  private objectId(item: { _id?: string; id?: string }) {
-    return item._id || item.id || '';
-  }
-
-  private resetQuizBuilder() {
-    this.quizQuestions.set([this.createEmptyQuizQuestion()]);
-    this.quizPassingScore.set(70);
-    this.quizValidationError.set('');
-  }
-
-  private loadQuizBuilder(quiz: LessonQuiz | null) {
-    if (!quiz?.questions?.length) {
-      this.resetQuizBuilder();
-      return;
+  private buildSlidesPayload() {
+    const currentSlides = this.slides();
+    if (!currentSlides.length) {
+      this.slidesValidationError.set('أضف شريحة واحدة على الأقل لهذا الدرس.');
+      return null;
     }
 
-    this.quizQuestions.set(
-      quiz.questions.map((question) => ({
-        id: question.id,
-        prompt: question.prompt,
-        correctOptionId: question.correctOptionId || question.options[0]?.id || '',
-        options: question.options.map((option) => ({
-          id: option.id,
-          text: option.text,
-        })),
-      })),
-    );
-    this.quizPassingScore.set(quiz.passingScorePercentage ?? 70);
-    this.quizValidationError.set('');
+    for (const [slideIndex, slide] of currentSlides.entries()) {
+      if (!slide.title.trim()) {
+        this.slidesValidationError.set(`أدخل عنوان الشريحة رقم ${slideIndex + 1}.`);
+        return null;
+      }
+
+      if (!slide.body.trim()) {
+        this.slidesValidationError.set(`أدخل محتوى الشريحة رقم ${slideIndex + 1}.`);
+        return null;
+      }
+    }
+
+    this.slidesValidationError.set('');
+
+    return currentSlides.map((slide) => ({
+      id: slide.id,
+      title: slide.title.trim(),
+      body: slide.body.trim(),
+      mediaUrl: slide.mediaUrl?.trim() || null,
+      notes: slide.notes?.trim() || null,
+    }));
   }
 
-  private buildQuizPayload(): LessonQuiz | null {
-    const questions = this.quizQuestions();
+  private buildQuizPayload(
+    questions: EditableQuizQuestion[],
+    passingScore: number,
+    errorSignal: WritableSignal<string>,
+  ): LessonQuiz | null {
     if (!questions.length) {
-      this.quizValidationError.set('أضف سؤالاً واحداً على الأقل للاختبار.');
+      errorSignal.set('أضف سؤالاً واحداً على الأقل.');
       return null;
     }
 
     for (const [questionIndex, question] of questions.entries()) {
       if (!question.prompt.trim()) {
-        this.quizValidationError.set(`أدخل نص السؤال رقم ${questionIndex + 1}.`);
-        return null;
-      }
-
-      if (question.options.length < 2) {
-        this.quizValidationError.set(`أضف خيارين على الأقل للسؤال رقم ${questionIndex + 1}.`);
+        errorSignal.set(`أدخل نص السؤال رقم ${questionIndex + 1}.`);
         return null;
       }
 
       if (question.options.some((option) => !option.text.trim())) {
-        this.quizValidationError.set(`أكمل نص جميع الخيارات في السؤال رقم ${questionIndex + 1}.`);
+        errorSignal.set(`أكمل جميع الخيارات في السؤال رقم ${questionIndex + 1}.`);
         return null;
       }
 
-      if (!question.correctOptionId || !question.options.some((option) => option.id === question.correctOptionId)) {
-        this.quizValidationError.set(`حدد الإجابة الصحيحة للسؤال رقم ${questionIndex + 1}.`);
+      if (!question.options.some((option) => option.id === question.correctOptionId)) {
+        errorSignal.set(`حدد الإجابة الصحيحة للسؤال رقم ${questionIndex + 1}.`);
         return null;
       }
     }
 
-    this.quizValidationError.set('');
+    errorSignal.set('');
 
     return {
-      passingScorePercentage: this.quizPassingScore(),
+      passingScorePercentage: passingScore,
       questions: questions.map((question) => ({
         id: question.id,
         prompt: question.prompt.trim(),
@@ -952,10 +1157,126 @@ export class CourseLessonsManagementComponent implements OnInit {
     };
   }
 
+  private loadQuizBuilder(quiz: LessonQuiz | null) {
+    this.quizQuestions.set(this.normalizeQuizQuestions(quiz));
+    this.quizPassingScore.set(quiz?.passingScorePercentage ?? 70);
+    this.quizValidationError.set('');
+  }
+
+  private loadFinalQuizBuilder(quiz: LessonQuiz | null) {
+    this.finalQuizQuestions.set(this.normalizeQuizQuestions(quiz));
+    this.finalQuizPassingScore.set(quiz?.passingScorePercentage ?? 70);
+    this.finalQuizValidationError.set('');
+  }
+
+  private normalizeQuizQuestions(quiz: LessonQuiz | null) {
+    if (!quiz?.questions?.length) {
+      return [this.createEmptyQuizQuestion()];
+    }
+
+    return quiz.questions.map((question) => ({
+      id: question.id,
+      prompt: question.prompt,
+      correctOptionId: question.correctOptionId || question.options[0]?.id || '',
+      options: question.options.map((option) => ({
+        id: option.id,
+        text: option.text,
+      })),
+    }));
+  }
+
+  private buildEditableSlidesFromLesson(lesson: Lesson) {
+    if (lesson.slides?.length) {
+      return {
+        slides: lesson.slides.map((slide) => ({ ...slide })),
+        notice: '',
+      };
+    }
+
+    if (lesson.contentType === 'video' || lesson.contentType === 'pdf') {
+      return {
+        slides: [
+          {
+            id: crypto.randomUUID(),
+            title: lesson.title,
+            body:
+              lesson.contentType === 'video'
+                ? 'مقدمة مختصرة للفيديو. يمكنك تحديث هذه الشريحة وإضافة ملاحظات للمتعلم.'
+                : 'مقدمة مختصرة للملف. يمكنك تحديث هذه الشريحة وإضافة توجيهات للمتعلم.',
+            mediaUrl: lesson.contentUrl || null,
+            notes: null,
+          },
+        ],
+        notice: lesson.contentUrl || lesson.contentHtml ? 'تم تحويل المحتوى القديم إلى شريحة أولية قابلة للتحرير.' : '',
+      };
+    }
+
+    return {
+      slides: [
+        {
+          id: crypto.randomUUID(),
+          title: lesson.title,
+          body: this.previewText(lesson.contentHtml || 'اكتب محتوى الشريحة هنا.'),
+          mediaUrl: null,
+          notes: null,
+        },
+      ],
+      notice: lesson.contentHtml || lesson.contentUrl ? 'تم تحويل المحتوى النصي القديم إلى شريحة أولية قابلة للتحرير.' : '',
+    };
+  }
+
+  private buildLegacyContentHtml(slides: EditableSlide[]) {
+    return slides
+      .map((slide) => `<h3>${slide.title}</h3><p>${slide.body}</p>`)
+      .join('\n')
+      .trim();
+  }
+
+  private pickLegacyContentUrl(slides: EditableSlide[]) {
+    return slides.find((slide) => slide.mediaUrl?.trim())?.mediaUrl?.trim() || undefined;
+  }
+
+  private normalizeScoreInput(event: Event) {
+    const value = Number((event.target as HTMLInputElement | null)?.value || 0);
+    return Math.max(0, Math.min(100, Math.round(value)));
+  }
+
+  private moveItem<T>(items: T[], index: number, direction: -1 | 1) {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= items.length) {
+      return items;
+    }
+
+    const nextItems = [...items];
+    const [item] = nextItems.splice(index, 1);
+    nextItems.splice(nextIndex, 0, item);
+    return nextItems;
+  }
+
+  private resetSlides() {
+    this.slides.set([this.createEmptySlide()]);
+    this.slidesValidationError.set('');
+  }
+
+  private resetQuizBuilder() {
+    this.quizQuestions.set([this.createEmptyQuizQuestion()]);
+    this.quizPassingScore.set(70);
+    this.quizValidationError.set('');
+  }
+
+  private createEmptySlide(): EditableSlide {
+    return {
+      id: crypto.randomUUID(),
+      title: '',
+      body: '',
+      mediaUrl: null,
+      notes: null,
+    };
+  }
+
   private createEmptyQuizQuestion(): EditableQuizQuestion {
     const firstOption = this.createEmptyQuizOption();
     const secondOption = this.createEmptyQuizOption();
-
     return {
       id: crypto.randomUUID(),
       prompt: '',
@@ -969,6 +1290,10 @@ export class CourseLessonsManagementComponent implements OnInit {
       id: crypto.randomUUID(),
       text: '',
     };
+  }
+
+  private objectId(item: { _id?: string; id?: string }) {
+    return item._id || item.id || '';
   }
 
   private loadData(courseId: string) {

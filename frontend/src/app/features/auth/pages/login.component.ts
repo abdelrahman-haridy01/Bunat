@@ -469,6 +469,11 @@ export class LoginComponent {
       note: 'متابعة الفريق وتقدم الأعضاء',
     },
     {
+      email: 'content@bunat.local',
+      role: 'مدير المحتوى',
+      note: 'إدارة الدورات والمحتوى والاختبارات والشهادات',
+    },
+    {
       email: 'employee1@bunat.local',
       role: 'الموظف',
       note: 'تجربة تنفيذ التعلم من منظور المستخدم النهائي',

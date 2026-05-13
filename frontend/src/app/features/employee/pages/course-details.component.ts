@@ -1,343 +1,524 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
 import { finalize, forkJoin } from 'rxjs';
 
-import { DialogComponent, EmptyStateComponent, IconComponent } from '../../../shared/components';
-import { Course, Lesson } from '../../../core/models/domain.models';
+import { Course, Lesson, LessonQuiz, LessonSlide } from '../../../core/models/domain.models';
 import { CoursesApiService } from '../../../core/services/courses-api.service';
-import {
-  clearControlState,
-  getVisibleErrorMessage,
-  hasVisibleError,
-  touchAllControls,
-} from '../../../shared/utils/form-validation';
-
-function lessonContentValidator(control: AbstractControl): ValidationErrors | null {
-  const contentType = control.get('contentType')?.value as Lesson['contentType'] | undefined;
-  const contentUrl = String(control.get('contentUrl')?.value || '').trim();
-  const contentHtml = String(control.get('contentHtml')?.value || '').trim();
-
-  if (!contentType) {
-    return null;
-  }
-
-  if (contentType === 'quiz') {
-    return null;
-  }
-
-  if (contentType === 'video' || contentType === 'pdf') {
-    return contentUrl ? null : { contentMissing: true };
-  }
-
-  return contentUrl || contentHtml ? null : { contentMissing: true };
-}
+import { EmptyStateComponent } from '../../../shared/components';
 
 @Component({
   selector: 'app-course-details',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, EmptyStateComponent, DialogComponent, IconComponent],
+  imports: [CommonModule, EmptyStateComponent],
   template: `
-    <section class="page-grid">
-      <article class="card panel" *ngIf="course(); else loadingState">
-        <div class="panel-header">
+    <section class="learning-shell" *ngIf="course(); else loadingState">
+      <aside class="learning-outline card">
+        <div>
+          <h2 class="section-title">{{ course()?.title }}</h2>
+          <p class="section-subtitle">{{ course()?.description }}</p>
+        </div>
+
+        <div class="outline-list">
+          <button
+            class="outline-item"
+            *ngFor="let lesson of lessons(); let lessonIndex = index"
+            type="button"
+            [class.active]="isActiveLesson(lessonIndex)"
+            (click)="selectLesson(lessonIndex)"
+          >
+            <div>
+              <strong>{{ lesson.order }}. {{ lesson.title }}</strong>
+              <span>{{ contentTypeLabel(lesson.contentType) }}</span>
+            </div>
+            <span class="outline-status" [class.success]="isLessonCompleted(lesson)">
+              {{ isLessonCompleted(lesson) ? 'مكتمل' : 'قيد التنفيذ' }}
+            </span>
+          </button>
+
+          <button
+            *ngIf="course()?.finalQuiz"
+            class="outline-item"
+            type="button"
+            [class.active]="activePanel().kind === 'final'"
+            [disabled]="!canOpenFinalExam()"
+            (click)="selectFinalExam()"
+          >
+            <div>
+              <strong>الاختبار النهائي</strong>
+              <span>{{ course()?.finalQuiz?.questions?.length || 0 }} أسئلة</span>
+            </div>
+            <span class="outline-status" [class.success]="course()?.finalQuizProgress?.passed">
+              {{ course()?.finalQuizProgress?.passed ? 'تم الاجتياز' : canOpenFinalExam() ? 'متاح' : 'بعد الدروس' }}
+            </span>
+          </button>
+        </div>
+
+        <div class="certificate-box" *ngIf="course()?.certificateEnabled">
+          <strong>شهادة الإتمام</strong>
+          <p>تظهر بعد إتمام الدروس المطلوبة واجتياز الاختبار النهائي إن وجد.</p>
+          <button class="btn btn-secondary" type="button" (click)="downloadCertificate()" [disabled]="!canDownloadCertificate() || downloadingCertificate()">
+            {{
+              downloadingCertificate()
+                ? 'جارٍ التنزيل...'
+                : canDownloadCertificate()
+                  ? 'تحميل الشهادة'
+                  : 'غير متاحة بعد'
+            }}
+          </button>
+        </div>
+      </aside>
+
+      <article class="learning-stage card" *ngIf="activeLesson(); else finalExamStage">
+        <div class="stage-header">
           <div>
-            <h2 class="section-title">{{ course()?.title }}</h2>
-            <p class="section-subtitle">{{ course()?.description }}</p>
+            <p class="eyebrow">{{ contentTypeLabel(activeLesson()?.contentType || 'article') }}</p>
+            <h3>{{ activeLesson()?.title }}</h3>
           </div>
-          <div class="panel-actions">
-            <span class="status-chip info">{{ difficultyLabel(course()?.difficulty || 'beginner') }}</span>
-            <button *ngIf="readOnlyLessons()" class="btn btn-secondary" type="button" (click)="openLessonDialog()">
-              <span class="btn-content">
-                <app-icon name="graduation" [size]="18" />
-                <span>إضافة درس</span>
-              </span>
+          <span class="status-chip info">{{ activeLesson()?.durationMinutes }} دقيقة</span>
+        </div>
+
+        <ng-container *ngIf="activeLesson()?.contentType !== 'quiz'; else lessonQuizStage">
+          <div class="slide-progress">
+            <strong>الشريحة {{ activeSlideIndex() + 1 }}</strong>
+            <span>من {{ activeSlides().length }}</span>
+          </div>
+
+          <section class="slide-card" *ngIf="activeSlides()[activeSlideIndex()] as slide">
+            <div class="slide-card__header">
+              <h4>{{ slide.title }}</h4>
+              <span class="slide-card__count">{{ activeSlideIndex() + 1 }}/{{ activeSlides().length }}</span>
+            </div>
+            <p class="slide-card__body">{{ slide.body }}</p>
+
+            <div class="media-frame" *ngIf="slide.mediaUrl">
+              <iframe
+                *ngIf="activeLesson()?.contentType === 'video' || activeLesson()?.contentType === 'pdf'"
+                [src]="safeResourceUrl(slide.mediaUrl)"
+                title="lesson media"
+              ></iframe>
+              <a *ngIf="activeLesson()?.contentType !== 'video' && activeLesson()?.contentType !== 'pdf'" class="btn btn-secondary" [href]="slide.mediaUrl" target="_blank" rel="noopener noreferrer">
+                فتح الوسائط
+              </a>
+            </div>
+
+            <div class="slide-card__notes" *ngIf="slide.notes">{{ slide.notes }}</div>
+          </section>
+
+          <div class="stage-actions">
+            <button class="btn btn-ghost" type="button" (click)="goToPreviousSlide()" [disabled]="activeSlideIndex() === 0">
+              السابق
+            </button>
+            <button class="btn btn-secondary" type="button" (click)="goToNextSlide()" [disabled]="activeSlideIndex() === activeSlides().length - 1">
+              التالي
+            </button>
+            <button
+              class="btn btn-primary"
+              type="button"
+              (click)="completeActiveLesson()"
+              [disabled]="!canCompleteActiveLesson() || loadingLessonId() === objectId(activeLesson() || {})"
+            >
+              {{
+                loadingLessonId() === objectId(activeLesson() || {})
+                  ? 'جارٍ الحفظ...'
+                  : isLessonCompleted(activeLesson() || null)
+                    ? 'تم الإتمام'
+                    : 'إتمام الدرس'
+              }}
+            </button>
+          </div>
+        </ng-container>
+      </article>
+
+      <ng-template #lessonQuizStage>
+        <div class="stage-header">
+          <div>
+            <p class="eyebrow">اختبار الدرس</p>
+            <h3>{{ activeLesson()?.title }}</h3>
+          </div>
+          <span class="status-chip info">
+            {{ activeLesson()?.quiz?.questions?.length || 0 }} أسئلة
+          </span>
+        </div>
+
+        <div class="quiz-card" *ngIf="activeLesson()?.quiz as quiz">
+          <div class="quiz-progress">
+            <span>السؤال {{ activeQuizQuestionIndex() + 1 }} من {{ quiz.questions.length }}</span>
+            <span>الاجتياز {{ quiz.passingScorePercentage }}%</span>
+          </div>
+
+          <div class="quiz-stepper">
+            <span
+              class="quiz-step"
+              *ngFor="let question of quiz.questions; let questionIndex = index"
+              [class.active]="questionIndex === activeQuizQuestionIndex()"
+              [class.done]="hasSelectedLessonAnswer(objectId(activeLesson() || {}), question.id)"
+            ></span>
+          </div>
+
+          <section class="quiz-question-panel" *ngIf="quiz.questions[activeQuizQuestionIndex()] as question">
+            <h4>{{ question.prompt }}</h4>
+            <button
+              class="quiz-option-button"
+              *ngFor="let option of question.options"
+              type="button"
+              [class.selected]="selectedLessonAnswer(objectId(activeLesson() || {}), question.id) === option.id"
+              (click)="selectLessonQuizAnswer(question.id, option.id)"
+            >
+              {{ option.text }}
+            </button>
+          </section>
+
+          <div class="message-box error" *ngIf="quizError()">{{ quizError() }}</div>
+          <div class="quiz-result" *ngIf="activeLesson()?.progress?.attemptCount">
+            <strong>{{ activeLesson()?.progress?.quizPassed ? 'تم اجتياز الاختبار' : 'آخر نتيجة محفوظة' }}</strong>
+            <span>النتيجة: {{ activeLesson()?.progress?.bestQuizScorePercentage || activeLesson()?.progress?.lastQuizScorePercentage || 0 }}%</span>
+            <span>المحاولات: {{ activeLesson()?.progress?.attemptCount }}</span>
+          </div>
+
+          <div class="stage-actions">
+            <button class="btn btn-ghost" type="button" (click)="goToPreviousQuizQuestion()" [disabled]="activeQuizQuestionIndex() === 0">
+              السابق
+            </button>
+            <button
+              class="btn btn-secondary"
+              type="button"
+              (click)="goToNextQuizQuestion(quiz)"
+              [disabled]="activeQuizQuestionIndex() === quiz.questions.length - 1"
+            >
+              التالي
+            </button>
+            <button
+              class="btn btn-primary"
+              type="button"
+              (click)="submitActiveLessonQuiz(quiz)"
+              [disabled]="loadingLessonId() === objectId(activeLesson() || {}) || !!activeLesson()?.progress?.quizPassed"
+            >
+              {{
+                activeLesson()?.progress?.quizPassed
+                  ? 'تم الاجتياز'
+                  : loadingLessonId() === objectId(activeLesson() || {})
+                    ? 'جارٍ التصحيح...'
+                    : 'إرسال الاختبار'
+              }}
             </button>
           </div>
         </div>
+      </ng-template>
 
-        <div class="lesson-list" *ngIf="lessons().length; else noLessons">
-          <article class="lesson-card" *ngFor="let lesson of lessons()">
-            <div class="lesson-card__body">
-              <strong>{{ lesson.title }}</strong>
-              <p>{{ contentTypeLabel(lesson.contentType) }} • {{ lesson.durationMinutes }} دقيقة</p>
-              <p class="lesson-card__meta status" *ngIf="lesson.contentType === 'quiz' && lesson.progress?.quizPassed">
-                تم اجتياز الاختبار بنتيجة {{ lesson.progress?.bestQuizScorePercentage || lesson.progress?.lastQuizScorePercentage || 0 }}%
-              </p>
-              <p class="lesson-card__meta status" *ngIf="lesson.contentType === 'quiz' && !lesson.progress?.quizPassed && lesson.progress?.attemptCount">
-                آخر نتيجة: {{ lesson.progress?.lastQuizScorePercentage || 0 }}% من {{ lesson.quiz?.passingScorePercentage || 70 }}%
-              </p>
-              <p class="lesson-card__meta" *ngIf="lesson.contentUrl">يوجد رابط أو ملف مرفوع لهذا الدرس.</p>
-              <pre class="lesson-card__content" *ngIf="lesson.contentHtml">{{ lesson.contentHtml }}</pre>
-
-              <div class="quiz-panel" *ngIf="lesson.contentType === 'quiz' && lesson.quiz">
-                <div class="quiz-panel__summary">
-                  <span>{{ lesson.quiz.questions.length }} أسئلة</span>
-                  <span>الاجتياز من {{ lesson.quiz.passingScorePercentage }}%</span>
-                  <span *ngIf="lesson.progress?.attemptCount">المحاولات: {{ lesson.progress?.attemptCount }}</span>
-                </div>
-
-                <div class="field-error" *ngIf="quizErrors()[objectId(lesson)]">
-                  {{ quizErrors()[objectId(lesson)] }}
-                </div>
-
-                <div
-                  class="quiz-question"
-                  *ngFor="let question of lesson.quiz.questions; let questionIndex = index"
-                  [hidden]="!!lesson.progress?.quizPassed"
-                >
-                  <strong>س{{ questionIndex + 1 }}. {{ question.prompt }}</strong>
-                  <label class="quiz-option" *ngFor="let option of question.options">
-                    <input
-                      type="radio"
-                      [name]="'quiz-' + objectId(lesson) + '-' + question.id"
-                      [checked]="selectedQuizAnswer(objectId(lesson), question.id) === option.id"
-                      [disabled]="quizLocked(lesson)"
-                      (change)="selectQuizAnswer(objectId(lesson), question.id, option.id)"
-                    />
-                    <span>{{ option.text }}</span>
-                  </label>
-                </div>
-              </div>
+      <ng-template #finalExamStage>
+        <article class="learning-stage card" *ngIf="course()?.finalQuiz as finalQuiz; else fallbackStage">
+          <div class="stage-header">
+            <div>
+              <p class="eyebrow">الاختبار النهائي</p>
+              <h3>{{ course()?.title }}</h3>
             </div>
-            <div class="lesson-card__actions">
-              <a
-                *ngIf="lesson.contentUrl && lesson.contentType !== 'quiz'"
-                class="btn btn-secondary"
-                [href]="lesson.contentUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                فتح المحتوى
-              </a>
+            <span class="status-chip info">{{ finalQuiz.questions.length }} أسئلة</span>
+          </div>
+
+          <div class="quiz-card">
+            <div class="quiz-progress">
+              <span>السؤال {{ activeFinalQuizQuestionIndex() + 1 }} من {{ finalQuiz.questions.length }}</span>
+              <span>الاجتياز {{ finalQuiz.passingScorePercentage }}%</span>
+            </div>
+
+            <div class="quiz-stepper">
+              <span
+                class="quiz-step"
+                *ngFor="let question of finalQuiz.questions; let questionIndex = index"
+                [class.active]="questionIndex === activeFinalQuizQuestionIndex()"
+                [class.done]="hasSelectedFinalAnswer(question.id)"
+              ></span>
+            </div>
+
+            <section class="quiz-question-panel" *ngIf="finalQuiz.questions[activeFinalQuizQuestionIndex()] as question">
+              <h4>{{ question.prompt }}</h4>
               <button
-                *ngIf="!readOnlyLessons() && lesson.contentType !== 'quiz'"
-                class="btn btn-primary"
+                class="quiz-option-button"
+                *ngFor="let option of question.options"
                 type="button"
-                (click)="complete(lesson)"
-                [disabled]="loadingLessonId() === objectId(lesson)"
+                [class.selected]="selectedFinalAnswer(question.id) === option.id"
+                (click)="selectFinalQuizAnswer(question.id, option.id)"
               >
-                {{ loadingLessonId() === objectId(lesson) ? 'جارٍ الحفظ...' : 'إتمام الدرس' }}
+                {{ option.text }}
+              </button>
+            </section>
+
+            <div class="message-box error" *ngIf="finalQuizError()">{{ finalQuizError() }}</div>
+            <div class="quiz-result" *ngIf="course()?.finalQuizProgress?.attemptCount">
+              <strong>{{ course()?.finalQuizProgress?.passed ? 'تم اجتياز الاختبار النهائي' : 'آخر نتيجة محفوظة' }}</strong>
+              <span>النتيجة: {{ course()?.finalQuizProgress?.bestScorePercentage || course()?.finalQuizProgress?.lastScorePercentage || 0 }}%</span>
+              <span>المحاولات: {{ course()?.finalQuizProgress?.attemptCount }}</span>
+            </div>
+
+            <div class="stage-actions">
+              <button class="btn btn-ghost" type="button" (click)="goToPreviousFinalQuizQuestion()" [disabled]="activeFinalQuizQuestionIndex() === 0">
+                السابق
               </button>
               <button
-                *ngIf="!readOnlyLessons() && lesson.contentType === 'quiz'"
+                class="btn btn-secondary"
+                type="button"
+                (click)="goToNextFinalQuizQuestion(finalQuiz)"
+                [disabled]="activeFinalQuizQuestionIndex() === finalQuiz.questions.length - 1"
+              >
+                التالي
+              </button>
+              <button
                 class="btn btn-primary"
                 type="button"
-                (click)="submitQuiz(lesson)"
-                [disabled]="quizLocked(lesson) || loadingLessonId() === objectId(lesson)"
+                (click)="submitFinalQuiz(finalQuiz)"
+                [disabled]="loadingFinalQuiz() || !!course()?.finalQuizProgress?.passed"
               >
                 {{
-                  lesson.progress?.quizPassed
+                  course()?.finalQuizProgress?.passed
                     ? 'تم الاجتياز'
-                    : loadingLessonId() === objectId(lesson)
+                    : loadingFinalQuiz()
                       ? 'جارٍ التصحيح...'
-                      : 'إرسال الاختبار'
+                      : 'إرسال الاختبار النهائي'
                 }}
               </button>
             </div>
+          </div>
+        </article>
+
+        <ng-template #fallbackStage>
+          <article class="learning-stage card">
+            <app-empty-state title="اختر درساً" description="ابدأ من قائمة الدروس في الجهة اليمنى." />
           </article>
-        </div>
-      </article>
+        </ng-template>
+      </ng-template>
     </section>
 
     <ng-template #loadingState>
-      <app-empty-state title="جارٍ تحميل الدورة" description="يتم جلب التفاصيل الآن." />
+      <app-empty-state title="جارٍ تحميل الدورة" description="يتم تجهيز الشرائح والاختبارات الآن." />
     </ng-template>
-    <ng-template #noLessons>
-      <app-empty-state
-        title="لا توجد دروس في هذه الدورة"
-        [description]="
-          readOnlyLessons()
-            ? 'ابدأ بإضافة أول درس لهذه الدورة من هذه الشاشة.'
-            : 'الدورة مخصصة لك، لكن لم تتم إضافة دروس لها بعد من لوحة الإدارة.'
-        "
-      />
-    </ng-template>
-
-    <app-dialog
-      #lessonDialog
-      title="إضافة درس"
-      subtitle="أدخل بيانات الدرس لإضافته إلى هذه الدورة."
-      icon="graduation"
-    >
-      <form class="dialog-form" [formGroup]="lessonForm" (ngSubmit)="submitLesson()" novalidate>
-        <div class="form-grid">
-          <div class="field">
-            <label>عنوان الدرس</label>
-            <input formControlName="title" [class.is-invalid]="hasVisibleError(lessonForm.controls.title)" />
-            <div class="field-error" *ngIf="hasVisibleError(lessonForm.controls.title)">
-              {{ getVisibleErrorMessage(lessonForm.controls.title, lessonValidationMessages.title) }}
-            </div>
-          </div>
-          <div class="field">
-            <label>نوع المحتوى</label>
-            <select formControlName="contentType" [class.is-invalid]="hasVisibleError(lessonForm.controls.contentType)">
-              <option value="video">فيديو</option>
-              <option value="article">مقال</option>
-              <option value="pdf">PDF</option>
-              <option value="quiz">اختبار</option>
-              <option value="task">مهمة</option>
-            </select>
-            <div class="field-error" *ngIf="hasVisibleError(lessonForm.controls.contentType)">
-              {{ getVisibleErrorMessage(lessonForm.controls.contentType, lessonValidationMessages.contentType) }}
-            </div>
-          </div>
-          <div class="field">
-            <label>الترتيب</label>
-            <input type="number" formControlName="order" [class.is-invalid]="hasVisibleError(lessonForm.controls.order)" />
-            <div class="field-error" *ngIf="hasVisibleError(lessonForm.controls.order)">
-              {{ getVisibleErrorMessage(lessonForm.controls.order, lessonValidationMessages.order) }}
-            </div>
-          </div>
-          <div class="field">
-            <label>المدة</label>
-            <input
-              type="number"
-              formControlName="durationMinutes"
-              [class.is-invalid]="hasVisibleError(lessonForm.controls.durationMinutes)"
-            />
-            <div class="field-error" *ngIf="hasVisibleError(lessonForm.controls.durationMinutes)">
-              {{ getVisibleErrorMessage(lessonForm.controls.durationMinutes, lessonValidationMessages.durationMinutes) }}
-            </div>
-          </div>
-          <div class="field field--full">
-            <label>رابط المحتوى</label>
-            <input formControlName="contentUrl" placeholder="https://example.com/lesson أو سيتم تعبئته من الملف" />
-            <div class="field-help">
-              {{ lessonUrlHelpText() }}
-            </div>
-          </div>
-          <div class="field field--full" *ngIf="lessonUsesTextContent()">
-            <label>نص المحتوى</label>
-            <textarea
-              rows="8"
-              formControlName="contentHtml"
-              placeholder="اكتب محتوى الدرس هنا أو الصق HTML بسيطاً."
-            ></textarea>
-            <div class="field-help">يمكنك استخدام هذا الحقل للمقالات أو التعليمات النصية.</div>
-          </div>
-          <div class="field field--full">
-            <label>رفع ملف المحتوى</label>
-            <input type="file" (change)="onLessonFileSelected($event)" />
-            <div class="field-help" *ngIf="uploadedLessonFileName()">تم اختيار الملف: {{ uploadedLessonFileName() }}</div>
-            <div class="field-help" *ngIf="!uploadedLessonFileName()">
-              يتم حفظ الملفات محلياً داخل بيانات الدرس حالياً، وليس عبر مخزن ملفات خارجي.
-            </div>
-          </div>
-        </div>
-
-        <div class="field-error" *ngIf="hasLessonContentError()">
-          {{ lessonContentErrorMessage() }}
-        </div>
-
-        <div class="dialog-actions">
-          <button class="btn btn-ghost" type="button" (click)="closeLessonDialog()">إلغاء</button>
-          <button class="btn btn-primary" type="submit" [disabled]="lessonForm.invalid || savingLesson()">
-            {{ savingLesson() ? 'جارٍ الحفظ...' : 'إضافة الدرس' }}
-          </button>
-        </div>
-      </form>
-    </app-dialog>
   `,
   styles: [
     `
-      .panel {
+      .learning-shell {
+        display: grid;
+        grid-template-columns: 320px minmax(0, 1fr);
+        gap: 1rem;
+        align-items: start;
+      }
+
+      .learning-outline,
+      .learning-stage {
         padding: 1.5rem;
       }
 
-      .lesson-list {
+      .learning-outline {
         display: grid;
         gap: 1rem;
+        position: sticky;
+        top: 1rem;
       }
 
-      .lesson-card {
+      .outline-list {
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .outline-item,
+      .quiz-option-button {
+        width: 100%;
+        border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-sm);
+        background: var(--color-neutral-50);
+        color: inherit;
+        cursor: pointer;
+      }
+
+      .outline-item {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.95rem 1rem;
+        text-align: right;
+      }
+
+      .outline-item span {
+        display: block;
+        font-size: 0.88rem;
+        color: var(--color-secondary-paragraph);
+      }
+
+      .outline-item.active {
+        border-color: var(--color-primary-default);
+        background: var(--color-primary-soft);
+      }
+
+      .outline-item:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .outline-status {
+        white-space: nowrap;
+        color: var(--color-secondary-paragraph);
+      }
+
+      .outline-status.success {
+        color: var(--color-success-700);
+      }
+
+      .certificate-box {
+        display: grid;
+        gap: 0.65rem;
+        padding: 1rem;
+        border-radius: var(--radius-sm);
+        background: linear-gradient(135deg, rgba(20, 87, 58, 0.08), rgba(15, 76, 129, 0.08));
+        border: 1px solid rgba(20, 87, 58, 0.12);
+      }
+
+      .certificate-box p {
+        margin: 0;
+        color: var(--color-secondary-paragraph);
+      }
+
+      .stage-header,
+      .slide-progress,
+      .stage-actions,
+      .quiz-progress {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
-        padding: 1rem;
-        border-radius: var(--radius-sm);
-        border: 1px solid var(--color-neutral-200);
       }
 
-      .lesson-card p {
-        margin: 0.35rem 0 0;
+      .eyebrow {
+        margin: 0 0 0.35rem;
+        color: var(--color-secondary-default);
+        font-weight: 700;
+      }
+
+      .stage-header h3,
+      .quiz-question-panel h4,
+      .slide-card h4 {
+        margin: 0;
+      }
+
+      .slide-card,
+      .quiz-card {
+        display: grid;
+        gap: 1rem;
+        padding: 1.25rem;
+        border: 1px solid var(--color-neutral-200);
+        border-radius: 1.25rem;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 250, 248, 0.96));
+      }
+
+      .slide-progress {
+        margin: 1rem 0;
+      }
+
+      .slide-card__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      .slide-card__count {
         color: var(--color-secondary-paragraph);
       }
 
-      .lesson-card__body {
-        min-width: 0;
-      }
-
-      .lesson-card__meta {
-        font-size: 0.92rem;
-      }
-
-      .lesson-card__content {
-        margin: 0.85rem 0 0;
-        padding: 0.85rem;
+      .slide-card__body,
+      .slide-card__notes {
+        margin: 0;
         white-space: pre-wrap;
-        border-radius: var(--radius-sm);
-        background: var(--color-neutral-50);
+        line-height: 1.8;
+      }
+
+      .slide-card__notes {
+        padding-top: 0.75rem;
+        border-top: 1px dashed var(--color-neutral-200);
+        color: var(--color-secondary-paragraph);
+      }
+
+      .media-frame {
+        border-radius: 1rem;
+        overflow: hidden;
         border: 1px solid var(--color-neutral-200);
-        color: var(--color-primary-text);
-        font-family: inherit;
+        background: #fff;
       }
 
-      .lesson-card__meta.status {
-        color: var(--color-success-700);
+      .media-frame iframe {
+        width: 100%;
+        min-height: 360px;
+        border: 0;
       }
 
-      .quiz-panel {
-        margin-top: 1rem;
+      .quiz-stepper {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+      }
+
+      .quiz-step {
+        width: 100%;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--color-neutral-200);
+      }
+
+      .quiz-step.active {
+        background: var(--color-secondary-default);
+      }
+
+      .quiz-step.done {
+        background: var(--color-success-700);
+      }
+
+      .quiz-question-panel {
         display: grid;
         gap: 0.85rem;
       }
 
-      .quiz-panel__summary {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-        color: var(--color-secondary-paragraph);
-        font-size: 0.92rem;
+      .quiz-option-button {
+        padding: 1rem 1.1rem;
+        text-align: right;
+        transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
       }
 
-      .quiz-question {
-        display: grid;
-        gap: 0.55rem;
-        padding: 0.9rem;
-        border: 1px solid var(--color-neutral-200);
-        border-radius: var(--radius-sm);
-        background: var(--color-neutral-50);
+      .quiz-option-button.selected {
+        border-color: var(--color-secondary-default);
+        background: rgba(15, 76, 129, 0.08);
+        box-shadow: inset 0 0 0 1px rgba(15, 76, 129, 0.18);
       }
 
-      .quiz-option {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.55rem;
-        color: var(--color-primary-text);
-      }
-
-      .lesson-card__actions {
+      .quiz-result {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
+        gap: 1rem;
         flex-wrap: wrap;
+        padding: 0.95rem 1rem;
+        border-radius: 1rem;
+        background: rgba(20, 87, 58, 0.08);
+        color: var(--color-success-700);
       }
 
-      .field--full {
-        grid-column: 1 / -1;
+      .stage-actions {
+        margin-top: 0.5rem;
       }
 
-      .field-help {
-        margin-top: 0.45rem;
-        font-size: 0.9rem;
-        color: var(--color-secondary-paragraph);
+      @media (max-width: 1080px) {
+        .learning-shell {
+          grid-template-columns: 1fr;
+        }
+
+        .learning-outline {
+          position: static;
+        }
       }
 
       @media (max-width: 720px) {
-        .lesson-card {
+        .stage-header,
+        .slide-progress,
+        .stage-actions,
+        .quiz-progress {
           flex-direction: column;
           align-items: stretch;
         }
@@ -347,274 +528,303 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CourseDetailsComponent implements OnInit {
-  private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly coursesApi = inject(CoursesApiService);
+  private readonly sanitizer = inject(DomSanitizer);
 
-  protected readonly lessonDialog = viewChild.required<DialogComponent>('lessonDialog');
   protected readonly course = signal<Course | null>(null);
   protected readonly lessons = signal<Lesson[]>([]);
+  protected readonly activePanel = signal<{ kind: 'lesson'; index: number } | { kind: 'final' }>({
+    kind: 'lesson',
+    index: 0,
+  });
+  protected readonly activeSlideIndex = signal(0);
+  protected readonly activeQuizQuestionIndex = signal(0);
+  protected readonly activeFinalQuizQuestionIndex = signal(0);
+  protected readonly lessonQuizAnswers = signal<Record<string, Record<string, string>>>({});
+  protected readonly finalQuizAnswers = signal<Record<string, string>>({});
+  protected readonly quizError = signal('');
+  protected readonly finalQuizError = signal('');
   protected readonly loadingLessonId = signal('');
-  protected readonly savingLesson = signal(false);
-  protected readonly uploadedLessonFileName = signal('');
-  protected readonly quizAnswers = signal<Record<string, Record<string, string>>>({});
-  protected readonly quizErrors = signal<Record<string, string>>({});
-  protected readonly readOnlyLessons = computed(() => !!this.route.snapshot.data['readOnlyLessons']);
-  protected readonly hasVisibleError = hasVisibleError;
-  protected readonly getVisibleErrorMessage = getVisibleErrorMessage;
-  protected readonly lessonValidationMessages = {
-    title: {
-      required: 'أدخل عنوان الدرس.',
-    },
-    contentType: {
-      required: 'اختر نوع المحتوى.',
-    },
-    order: {
-      required: 'أدخل ترتيب الدرس.',
-      min: 'ترتيب الدرس يجب أن يبدأ من 1.',
-    },
-    durationMinutes: {
-      required: 'أدخل مدة الدرس.',
-      min: 'مدة الدرس يجب أن تكون دقيقة واحدة على الأقل.',
-    },
-  };
-  protected readonly lessonForm = this.fb.nonNullable.group({
-    title: ['', Validators.required],
-    contentType: ['article', Validators.required],
-    order: [1, [Validators.required, Validators.min(1)]],
-    durationMinutes: [10, [Validators.required, Validators.min(1)]],
-    contentUrl: [''],
-    contentHtml: [''],
-    isRequired: [true],
-  }, { validators: lessonContentValidator });
+  protected readonly loadingFinalQuiz = signal(false);
+  protected readonly downloadingCertificate = signal(false);
+  protected readonly activeLesson = computed(() => {
+    const panel = this.activePanel();
+    return panel.kind === 'lesson' ? this.lessons()[panel.index] || null : null;
+  });
+  protected readonly activeSlides = computed(() => {
+    const lesson = this.activeLesson();
+    return lesson ? this.resolveSlides(lesson) : [];
+  });
+  protected readonly canOpenFinalExam = computed(() => this.requiredLessonsCompleted());
+  protected readonly canDownloadCertificate = computed(() => {
+    const currentCourse = this.course();
+    return !!currentCourse?.certificateEnabled && this.requiredLessonsCompleted() && this.finalQuizCompletedIfRequired();
+  });
 
   ngOnInit() {
-    const id = this.route.snapshot.paramMap.get('id');
-    if (!id) {
-      return;
+    const courseId = this.route.snapshot.paramMap.get('id');
+    if (courseId) {
+      this.loadCourse(courseId);
     }
-
-    this.loadCourse(id);
   }
 
-  protected complete(lesson: Lesson) {
-    const lessonId = this.objectId(lesson);
-    const courseId = this.route.snapshot.paramMap.get('id');
-    if (!lessonId || !courseId) {
+  protected selectLesson(index: number) {
+    this.activePanel.set({ kind: 'lesson', index });
+    this.activeSlideIndex.set(0);
+    this.activeQuizQuestionIndex.set(0);
+    this.quizError.set('');
+  }
+
+  protected selectFinalExam() {
+    if (!this.canOpenFinalExam()) {
       return;
     }
 
+    this.activePanel.set({ kind: 'final' });
+    this.activeFinalQuizQuestionIndex.set(0);
+    this.finalQuizError.set('');
+  }
+
+  protected goToPreviousSlide() {
+    this.activeSlideIndex.update((index) => Math.max(0, index - 1));
+  }
+
+  protected goToNextSlide() {
+    this.activeSlideIndex.update((index) => Math.min(this.activeSlides().length - 1, index + 1));
+  }
+
+  protected canCompleteActiveLesson() {
+    const lesson = this.activeLesson();
+    return !!lesson && lesson.contentType !== 'quiz' && this.activeSlideIndex() === this.activeSlides().length - 1;
+  }
+
+  protected completeActiveLesson() {
+    const lesson = this.activeLesson();
+    const courseId = this.route.snapshot.paramMap.get('id');
+    if (!lesson || !courseId || !this.canCompleteActiveLesson()) {
+      return;
+    }
+
+    const lessonId = this.objectId(lesson);
     this.loadingLessonId.set(lessonId);
     this.coursesApi
       .completeLesson(lessonId, lesson.durationMinutes)
       .pipe(finalize(() => this.loadingLessonId.set('')))
-      .subscribe({
-        next: () => this.loadCourse(courseId),
-      });
+      .subscribe(() => this.loadCourse(courseId));
   }
 
-  protected selectQuizAnswer(lessonId: string, questionId: string, optionId: string) {
-    this.quizAnswers.update((answers) => ({
+  protected isLessonCompleted(lesson: Lesson | null) {
+    return lesson?.progress?.status === 'completed';
+  }
+
+  protected selectLessonQuizAnswer(questionId: string, optionId: string) {
+    const lessonId = this.objectId(this.activeLesson() || {});
+    if (!lessonId) {
+      return;
+    }
+
+    this.lessonQuizAnswers.update((answers) => ({
       ...answers,
       [lessonId]: {
         ...(answers[lessonId] || {}),
         [questionId]: optionId,
       },
     }));
-    this.quizErrors.update((errors) => ({
-      ...errors,
-      [lessonId]: '',
-    }));
+    this.quizError.set('');
   }
 
-  protected selectedQuizAnswer(lessonId: string, questionId: string) {
-    return this.quizAnswers()[lessonId]?.[questionId] || '';
+  protected selectedLessonAnswer(lessonId: string, questionId: string) {
+    return this.lessonQuizAnswers()[lessonId]?.[questionId] || '';
   }
 
-  protected quizLocked(lesson: Lesson) {
-    const lessonId = this.objectId(lesson);
-    return !lessonId || !!lesson.progress?.quizPassed || this.loadingLessonId() === lessonId;
+  protected hasSelectedLessonAnswer(lessonId: string, questionId: string) {
+    return !!this.selectedLessonAnswer(lessonId, questionId);
   }
 
-  protected submitQuiz(lesson: Lesson) {
-    const lessonId = this.objectId(lesson);
+  protected goToPreviousQuizQuestion() {
+    this.activeQuizQuestionIndex.update((index) => Math.max(0, index - 1));
+  }
+
+  protected goToNextQuizQuestion(quiz: LessonQuiz) {
+    this.activeQuizQuestionIndex.update((index) => Math.min(quiz.questions.length - 1, index + 1));
+  }
+
+  protected submitActiveLessonQuiz(quiz: LessonQuiz) {
+    const lesson = this.activeLesson();
     const courseId = this.route.snapshot.paramMap.get('id');
-    if (!lessonId || !courseId || !lesson.quiz || this.quizLocked(lesson)) {
+    if (!lesson || !courseId) {
       return;
     }
 
-    const selectedAnswers = this.quizAnswers()[lessonId] || {};
-    const unansweredQuestion = lesson.quiz.questions.find((question) => !selectedAnswers[question.id]);
-    if (unansweredQuestion) {
-      this.quizErrors.update((errors) => ({
-        ...errors,
-        [lessonId]: 'أجب عن جميع أسئلة الاختبار قبل الإرسال.',
-      }));
+    const lessonId = this.objectId(lesson);
+    const selectedAnswers = this.lessonQuizAnswers()[lessonId] || {};
+    const unanswered = quiz.questions.find((question) => !selectedAnswers[question.id]);
+    if (unanswered) {
+      this.quizError.set('أجب عن جميع الأسئلة قبل إرسال الاختبار.');
       return;
     }
 
     this.loadingLessonId.set(lessonId);
     this.coursesApi
       .submitQuizAttempt(lessonId, {
-        answers: lesson.quiz.questions.map((question) => ({
+        answers: quiz.questions.map((question) => ({
           questionId: question.id,
           optionId: selectedAnswers[question.id],
         })),
         timeSpentMinutes: lesson.durationMinutes,
       })
       .pipe(finalize(() => this.loadingLessonId.set('')))
-      .subscribe({
-        next: () => {
-          this.quizErrors.update((errors) => ({
-            ...errors,
-            [lessonId]: '',
-          }));
-          this.loadCourse(courseId);
-        },
+      .subscribe(() => {
+        this.quizError.set('');
+        this.loadCourse(courseId);
       });
   }
 
-  protected openLessonDialog() {
-    this.lessonForm.reset({
-      title: '',
-      contentType: 'article',
-      order: this.lessons().length + 1,
-      durationMinutes: 10,
-      contentUrl: '',
-      contentHtml: '',
-      isRequired: true,
-    });
-    this.uploadedLessonFileName.set('');
-    clearControlState(this.lessonForm);
-    this.lessonDialog().open();
+  protected selectFinalQuizAnswer(questionId: string, optionId: string) {
+    this.finalQuizAnswers.update((answers) => ({
+      ...answers,
+      [questionId]: optionId,
+    }));
+    this.finalQuizError.set('');
   }
 
-  protected closeLessonDialog() {
-    this.uploadedLessonFileName.set('');
-    this.lessonDialog().close();
+  protected selectedFinalAnswer(questionId: string) {
+    return this.finalQuizAnswers()[questionId] || '';
   }
 
-  protected submitLesson() {
-    if (this.lessonForm.invalid || this.savingLesson()) {
-      touchAllControls(this.lessonForm);
-      return;
-    }
+  protected hasSelectedFinalAnswer(questionId: string) {
+    return !!this.selectedFinalAnswer(questionId);
+  }
 
+  protected goToPreviousFinalQuizQuestion() {
+    this.activeFinalQuizQuestionIndex.update((index) => Math.max(0, index - 1));
+  }
+
+  protected goToNextFinalQuizQuestion(quiz: LessonQuiz) {
+    this.activeFinalQuizQuestionIndex.update((index) => Math.min(quiz.questions.length - 1, index + 1));
+  }
+
+  protected submitFinalQuiz(quiz: LessonQuiz) {
     const courseId = this.route.snapshot.paramMap.get('id');
     if (!courseId) {
       return;
     }
 
-    const formValue = this.lessonForm.getRawValue();
-    const payload: Partial<Lesson> & {
-      courseId: string;
-      title: string;
-      contentType: Lesson['contentType'];
-    } = {
-      title: formValue.title.trim(),
-      courseId,
-      contentType: formValue.contentType as Lesson['contentType'],
-      order: Number(formValue.order),
-      durationMinutes: Number(formValue.durationMinutes),
-      isRequired: formValue.isRequired,
-      contentUrl: formValue.contentUrl.trim() || undefined,
-      contentHtml: formValue.contentHtml.trim() || undefined,
-    };
+    const selectedAnswers = this.finalQuizAnswers();
+    const unanswered = quiz.questions.find((question) => !selectedAnswers[question.id]);
+    if (unanswered) {
+      this.finalQuizError.set('أجب عن جميع أسئلة الاختبار النهائي قبل الإرسال.');
+      return;
+    }
 
-    this.savingLesson.set(true);
+    this.loadingFinalQuiz.set(true);
     this.coursesApi
-      .createLesson(payload)
-      .pipe(finalize(() => this.savingLesson.set(false)))
-      .subscribe({
-        next: () => {
-          this.closeLessonDialog();
-          this.loadCourse(courseId);
-        },
+      .submitFinalQuizAttempt(courseId, {
+        answers: quiz.questions.map((question) => ({
+          questionId: question.id,
+          optionId: selectedAnswers[question.id],
+        })),
+      })
+      .pipe(finalize(() => this.loadingFinalQuiz.set(false)))
+      .subscribe(() => {
+        this.finalQuizError.set('');
+        this.loadCourse(courseId);
       });
   }
 
-  protected lessonUsesTextContent() {
-    return this.lessonForm.controls.contentType.value !== 'video' && this.lessonForm.controls.contentType.value !== 'pdf';
-  }
-
-  protected lessonUrlHelpText() {
-    return this.lessonUsesTextContent()
-      ? 'اختياري إذا كتبت نص المحتوى، ومطلوب إذا كنت تريد فتح ملف أو رابط خارجي.'
-      : 'مطلوب لهذا النوع. يمكنك لصق رابط مباشر أو اختيار ملف من جهازك.';
-  }
-
-  protected hasLessonContentError() {
-    const { contentType, contentUrl, contentHtml } = this.lessonForm.controls;
-    return this.lessonForm.hasError('contentMissing') && (contentType.touched || contentUrl.touched || contentHtml.touched);
-  }
-
-  protected lessonContentErrorMessage() {
-    return this.lessonUsesTextContent()
-      ? 'أضف نص المحتوى أو رابطاً أو ملفاً للدرس.'
-      : 'أضف رابط المحتوى أو ارفع ملفاً لهذا الدرس.';
-  }
-
-  protected onLessonFileSelected(event: Event) {
-    const input = event.target as HTMLInputElement | null;
-    const file = input?.files?.[0];
-    if (!file) {
+  protected downloadCertificate() {
+    const courseId = this.route.snapshot.paramMap.get('id');
+    if (!courseId || !this.canDownloadCertificate() || this.downloadingCertificate()) {
       return;
     }
 
-    this.uploadedLessonFileName.set(file.name);
-    const textLikeFile = file.type.startsWith('text/') || /\.(txt|md|html|htm|json|csv)$/i.test(file.name);
-    const reader = new FileReader();
+    this.downloadingCertificate.set(true);
+    this.coursesApi
+      .downloadCertificate(courseId)
+      .pipe(finalize(() => this.downloadingCertificate.set(false)))
+      .subscribe((blob) => {
+        const fileUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = fileUrl;
+        anchor.download = `bunat-certificate-${courseId}.pdf`;
+        anchor.click();
+        URL.revokeObjectURL(fileUrl);
+      });
+  }
 
-    reader.onload = () => {
-      const result = typeof reader.result === 'string' ? reader.result : '';
-      if (!result) {
-        return;
-      }
-
-      if (this.lessonUsesTextContent() && textLikeFile) {
-        this.lessonForm.patchValue({
-          contentHtml: result,
-          contentUrl: '',
-        });
-      } else {
-        this.lessonForm.patchValue({
-          contentUrl: result,
-        });
-      }
-
-      this.lessonForm.controls.contentUrl.markAsTouched();
-      this.lessonForm.controls.contentHtml.markAsTouched();
-      this.lessonForm.updateValueAndValidity();
-    };
-
-    if (this.lessonUsesTextContent() && textLikeFile) {
-      reader.readAsText(file);
-      return;
-    }
-
-    reader.readAsDataURL(file);
+  protected contentTypeLabel(value: Lesson['contentType']) {
+    return {
+      article: 'مقال شرائحي',
+      task: 'مهمة',
+      video: 'فيديو',
+      pdf: 'PDF',
+      quiz: 'اختبار',
+    }[value] || value;
   }
 
   protected objectId(item: { _id?: string; id?: string }) {
     return item._id || item.id || '';
   }
 
-  protected contentTypeLabel(value: Lesson['contentType']) {
-    return {
-      video: 'فيديو',
-      article: 'مقال',
-      pdf: 'PDF',
-      quiz: 'اختبار',
-      task: 'مهمة',
-    }[value] || value;
+  protected isActiveLesson(index: number) {
+    const panel = this.activePanel();
+    return panel.kind === 'lesson' && panel.index === index;
   }
 
-  protected difficultyLabel(value: string) {
-    return {
-      beginner: 'مبتدئ',
-      intermediate: 'متوسط',
-      advanced: 'متقدم',
-    }[value] || value;
+  protected safeResourceUrl(value?: string | null): SafeResourceUrl {
+    return this.sanitizer.bypassSecurityTrustResourceUrl(value || 'about:blank');
+  }
+
+  private requiredLessonsCompleted() {
+    const requiredLessons = this.lessons().filter((lesson) => lesson.isRequired);
+    return requiredLessons.every((lesson) => lesson.progress?.status === 'completed');
+  }
+
+  private finalQuizCompletedIfRequired() {
+    return !this.course()?.finalQuiz || !!this.course()?.finalQuizProgress?.passed;
+  }
+
+  private resolveSlides(lesson: Lesson): LessonSlide[] {
+    if (lesson.slides?.length) {
+      return lesson.slides;
+    }
+
+    if (lesson.contentType === 'video' || lesson.contentType === 'pdf') {
+      return [
+        {
+          id: `${this.objectId(lesson)}-intro`,
+          title: lesson.title,
+          body:
+            lesson.contentType === 'video'
+              ? 'راجع هذه المقدمة ثم انتقل لعرض الفيديو مباشرة من داخل البطاقة.'
+              : 'راجع هذه المقدمة ثم افتح ملف PDF من داخل البطاقة.',
+          mediaUrl: null,
+          notes: null,
+        },
+        {
+          id: `${this.objectId(lesson)}-media`,
+          title: lesson.contentType === 'video' ? 'مشاهدة الفيديو' : 'عرض الملف',
+          body: lesson.contentHtml || 'يمكنك عرض المحتوى مباشرة هنا.',
+          mediaUrl: lesson.contentUrl || null,
+          notes: null,
+        },
+      ];
+    }
+
+    return [
+      {
+        id: `${this.objectId(lesson)}-fallback`,
+        title: lesson.title,
+        body: this.stripContent(lesson.contentHtml || 'تمت إضافة هذا الدرس بالمحتوى القديم وسيظهر هنا كشريحة واحدة.'),
+        mediaUrl: lesson.contentUrl || null,
+        notes: null,
+      },
+    ];
+  }
+
+  private stripContent(value: string) {
+    return value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   }
 
   private loadCourse(id: string) {
@@ -622,15 +832,15 @@ export class CourseDetailsComponent implements OnInit {
       course: this.coursesApi.getCourse(id),
       lessons: this.coursesApi.getLessons(id),
     }).subscribe(({ course, lessons }) => {
-      this.initializeQuizAnswers(lessons);
+      this.initializeLessonQuizAnswers(lessons);
+      this.initializeFinalQuizAnswers(course);
       this.course.set(course);
       this.lessons.set(lessons);
     });
   }
 
-  private initializeQuizAnswers(lessons: Lesson[]) {
-    const nextAnswers = { ...this.quizAnswers() };
-
+  private initializeLessonQuizAnswers(lessons: Lesson[]) {
+    const nextAnswers = { ...this.lessonQuizAnswers() };
     for (const lesson of lessons) {
       const lessonId = this.objectId(lesson);
       if (!lessonId || lesson.contentType !== 'quiz' || !lesson.quiz || nextAnswers[lessonId]) {
@@ -639,7 +849,19 @@ export class CourseDetailsComponent implements OnInit {
 
       nextAnswers[lessonId] = {};
     }
+    this.lessonQuizAnswers.set(nextAnswers);
+  }
 
-    this.quizAnswers.set(nextAnswers);
+  private initializeFinalQuizAnswers(course: Course) {
+    if (!course.finalQuiz) {
+      this.finalQuizAnswers.set({});
+      return;
+    }
+
+    const nextAnswers = { ...this.finalQuizAnswers() };
+    for (const question of course.finalQuiz.questions) {
+      nextAnswers[question.id] = nextAnswers[question.id] || '';
+    }
+    this.finalQuizAnswers.set(nextAnswers);
   }
 }

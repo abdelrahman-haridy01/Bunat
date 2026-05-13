@@ -3,6 +3,7 @@ export enum UserRole {
   Manager = 'manager',
   Admin = 'admin',
   Hr = 'hr',
+  CourseManager = 'course_manager',
 }
 
 export enum UserStatus {

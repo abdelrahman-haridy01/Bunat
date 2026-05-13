@@ -15,6 +15,7 @@ import {
 } from 'class-validator';
 
 import { LessonContentType } from 'src/common/enums/domain.enums';
+import { LessonSlideDto } from './lesson-slide.dto';
 
 export class LessonQuizOptionDto {
   @IsOptional()
@@ -76,6 +77,12 @@ export class CreateLessonDto {
   @ValidateIf((_, value) => value !== null)
   @IsString()
   contentHtml?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => LessonSlideDto)
+  slides?: LessonSlideDto[];
 
   @IsOptional()
   @ValidateIf((_, value) => value !== null)

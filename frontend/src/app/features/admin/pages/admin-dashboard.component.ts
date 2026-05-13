@@ -183,6 +183,7 @@ export class AdminDashboardComponent implements OnInit {
         manager: 'المديرون',
         admin: 'الإدارة',
         hr: 'الموارد البشرية',
+        course_manager: 'مديرو المحتوى',
       }[role] || role
     );
   }

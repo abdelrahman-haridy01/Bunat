@@ -94,14 +94,15 @@ Password123!
 
 Available users:
 
-- `admin@bunat.local`
-- `hr@bunat.local`
-- `manager@bunat.local`
-- `employee1@bunat.local`
-- `employee2@bunat.local`
-- `employee3@bunat.local`
-- `employee4@bunat.local`
-- `employee5@bunat.local`
+- `admin@bunat.local` — Admin
+- `hr@bunat.local` — HR
+- `manager@bunat.local` — Manager
+- `content@bunat.local` — Course Manager
+- `employee1@bunat.local` — Employee
+- `employee2@bunat.local` — Employee
+- `employee3@bunat.local` — Employee
+- `employee4@bunat.local` — Employee
+- `employee5@bunat.local` — Employee
 
 ## Main backend endpoints
 
@@ -169,4 +170,3 @@ Intentional deviation:
 ## Verification note
 
 The workspace did not include installed dependencies, so I could not run `npm install`, build, or test commands inside this session. The implementation is wired for those commands and should be verified locally after dependency installation.
-

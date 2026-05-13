@@ -6,6 +6,26 @@ import { LessonContentType } from 'src/common/enums/domain.enums';
 export type LessonDocument = HydratedDocument<Lesson>;
 
 @Schema({ _id: false })
+export class LessonSlide {
+  @Prop({ required: true, trim: true })
+  id!: string;
+
+  @Prop({ required: true, trim: true })
+  title!: string;
+
+  @Prop({ required: true, trim: true })
+  body!: string;
+
+  @Prop({ type: String, default: null })
+  mediaUrl!: string | null;
+
+  @Prop({ type: String, default: null })
+  notes!: string | null;
+}
+
+export const LessonSlideSchema = SchemaFactory.createForClass(LessonSlide);
+
+@Schema({ _id: false })
 export class QuizOption {
   @Prop({ required: true, trim: true })
   id!: string;
@@ -60,6 +80,9 @@ export class Lesson {
 
   @Prop({ type: String, default: null })
   contentHtml!: string | null;
+
+  @Prop({ type: [LessonSlideSchema], default: [] })
+  slides!: LessonSlide[];
 
   @Prop({ type: LessonQuizSchema, default: null })
   quiz!: LessonQuiz | null;

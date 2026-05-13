@@ -21,6 +21,15 @@ export class UsersApiService {
     deleteUser(id) {
         return this.http.delete(`${environment.apiBaseUrl}/users/${id}`);
     }
+    getAiSettings() {
+        return this.http.get(`${environment.apiBaseUrl}/users/me/ai-settings`);
+    }
+    updateAiSettings(payload) {
+        return this.http.patch(`${environment.apiBaseUrl}/users/me/ai-settings`, payload);
+    }
+    deleteAiSettingsApiKey() {
+        return this.http.delete(`${environment.apiBaseUrl}/users/me/ai-settings/api-key`);
+    }
     static { this.ɵfac = function UsersApiService_Factory(__ngFactoryType__) { return new (__ngFactoryType__ || UsersApiService)(); }; }
     static { this.ɵprov = /*@__PURE__*/ i0.ɵɵdefineInjectable({ token: UsersApiService, factory: UsersApiService.ɵfac, providedIn: 'root' }); }
 }

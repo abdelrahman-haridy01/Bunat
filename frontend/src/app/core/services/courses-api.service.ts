@@ -2,7 +2,13 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../environments/environment';
-import { Course, Lesson, LessonQuiz } from '../models/domain.models';
+import {
+  AiCourseDraftRequest,
+  AiCourseDraftResponse,
+  Course,
+  Lesson,
+  LessonQuiz,
+} from '../models/domain.models';
 
 type LessonMutationPayload = Partial<Lesson> & {
   courseId: string;
@@ -63,5 +69,26 @@ export class CoursesApiService {
     },
   ) {
     return this.http.post(`${environment.apiBaseUrl}/lessons/${id}/quiz-attempt`, payload);
+  }
+
+  submitFinalQuizAttempt(
+    courseId: string,
+    payload: {
+      answers: Array<{ questionId: string; optionId: string }>;
+      timeSpentMinutes?: number;
+    },
+  ) {
+    return this.http.post(`${environment.apiBaseUrl}/courses/${courseId}/final-quiz-attempt`, payload);
+  }
+
+  downloadCertificate(courseId: string, userId?: string) {
+    const suffix = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+    return this.http.get(`${environment.apiBaseUrl}/courses/${courseId}/certificate${suffix}`, {
+      responseType: 'blob',
+    });
+  }
+
+  generateCourseDraft(payload: AiCourseDraftRequest) {
+    return this.http.post<AiCourseDraftResponse>(`${environment.apiBaseUrl}/ai/course-drafts`, payload);
   }
 }

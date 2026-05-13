@@ -83,6 +83,16 @@ export const appRoutes = [
                 loadComponent: () => import('./features/admin/pages/users-management.component').then((m) => m.UsersManagementComponent),
             },
             {
+                path: 'employees/:id/report',
+                data: { title: 'تقرير العضو', eyebrow: 'تفاصيل التدريب والأثر' },
+                loadComponent: () => import('./features/manager/pages/employee-performance.component').then((m) => m.EmployeePerformanceComponent),
+            },
+            {
+                path: 'teams',
+                data: { title: 'إدارة الفرق', eyebrow: 'الفرق والأعضاء والمديرون' },
+                loadComponent: () => import('./features/admin/pages/teams-management.component').then((m) => m.TeamsManagementComponent),
+            },
+            {
                 path: 'courses',
                 data: { title: 'إدارة الدورات', eyebrow: 'المحتوى والربط بالمؤشرات' },
                 loadComponent: () => import('./features/admin/pages/courses-management.component').then((m) => m.CoursesManagementComponent),
@@ -101,6 +111,34 @@ export const appRoutes = [
                 path: 'assignments',
                 data: { title: 'تكليف التدريب', eyebrow: 'توزيع الدورات على الموظفين' },
                 loadComponent: () => import('./features/admin/pages/assign-training.component').then((m) => m.AssignTrainingComponent),
+            },
+            {
+                path: 'settings',
+                data: { title: 'إعدادات الذكاء الاصطناعي', eyebrow: 'المفاتيح والتفضيلات' },
+                loadComponent: () => import('./features/admin/pages/ai-settings.component').then((m) => m.AiSettingsComponent),
+            },
+        ],
+    },
+    {
+        path: 'content',
+        component: AppShellComponent,
+        canActivate: [authGuard, roleGuard],
+        data: { roles: ['course_manager'] },
+        children: [
+            {
+                path: 'courses',
+                data: { title: 'إدارة الدورات', eyebrow: 'المحتوى والعروض التقديمية' },
+                loadComponent: () => import('./features/admin/pages/courses-management.component').then((m) => m.CoursesManagementComponent),
+            },
+            {
+                path: 'courses/:id/lessons',
+                data: { title: 'بناء شرائح الدورة', eyebrow: 'الدروس والاختبارات' },
+                loadComponent: () => import('./features/admin/pages/course-lessons-management.component').then((m) => m.CourseLessonsManagementComponent),
+            },
+            {
+                path: 'settings',
+                data: { title: 'إعدادات الذكاء الاصطناعي', eyebrow: 'المفاتيح والتفضيلات' },
+                loadComponent: () => import('./features/admin/pages/ai-settings.component').then((m) => m.AiSettingsComponent),
             },
         ],
     },

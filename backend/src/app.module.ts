@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 
+import { AiModule } from './ai/ai.module';
 import { AuthModule } from './auth/auth.module';
 import { CoursesModule } from './courses/courses.module';
 import { DepartmentsModule } from './departments/departments.module';
@@ -29,6 +30,7 @@ import { UsersModule } from './users/users.module';
         uri: configService.get<string>('MONGODB_URI', 'mongodb://localhost:27017/bunat'),
       }),
     }),
+    AiModule,
     AuthModule,
     UsersModule,
     DepartmentsModule,
@@ -46,4 +48,3 @@ import { UsersModule } from './users/users.module';
   ],
 })
 export class AppModule {}
-

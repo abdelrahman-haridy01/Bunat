@@ -76,6 +76,11 @@ export class LoginComponent {
                 note: 'متابعة الفريق وتقدم الأعضاء',
             },
             {
+                email: 'content@bunat.local',
+                role: 'مدير المحتوى',
+                note: 'إدارة الدورات والمحتوى والاختبارات والشهادات',
+            },
+            {
                 email: 'employee1@bunat.local',
                 role: 'الموظف',
                 note: 'تجربة تنفيذ التعلم من منظور المستخدم النهائي',
@@ -124,7 +129,7 @@ export class LoginComponent {
             i0.ɵɵelementStart(2, "section", 2)(3, "aside", 3)(4, "a", 4);
             i0.ɵɵelement(5, "app-icon", 5);
             i0.ɵɵelementStart(6, "span");
-            i0.ɵɵtext(7, "\u0627\u0644\u0639\u0648\u062F\u0629 \u0625\u0644\u0649 \u0635\u0641\u062D\u0629 \u0627\u0644\u0639\u0631\u0636");
+            i0.ɵɵtext(7, "\u0627\u0644\u0639\u0648\u062F\u0629 \u0625\u0644\u0649 \u0627\u0644\u0635\u0641\u062D\u0629 \u0627\u0644\u0631\u0626\u064A\u0633\u064A\u0629");
             i0.ɵɵelementEnd()();
             i0.ɵɵelementStart(8, "div", 6)(9, "span", 7);
             i0.ɵɵtext(10, "\u0628\u064F\u0646\u0627\u0629");
@@ -133,16 +138,16 @@ export class LoginComponent {
             i0.ɵɵtext(12, "\u0645\u0646\u0635\u0629 \u0631\u0628\u0637 \u0627\u0644\u062A\u062F\u0631\u064A\u0628 \u0628\u0627\u0644\u0623\u062B\u0631");
             i0.ɵɵelementEnd()();
             i0.ɵɵelementStart(13, "h1");
-            i0.ɵɵtext(14, "\u0648\u0627\u062C\u0647\u0629 \u062F\u062E\u0648\u0644 \u062C\u0627\u0647\u0632\u0629 \u0644\u0644\u0639\u0631\u0636 \u0648\u0627\u0644\u062A\u0646\u0642\u0644 \u0628\u064A\u0646 \u0623\u062F\u0648\u0627\u0631 \u0627\u0644\u0645\u0646\u0635\u0629 \u0628\u062B\u0642\u0629 \u0648\u0648\u0636\u0648\u062D.");
+            i0.ɵɵtext(14, "\u0648\u0627\u062C\u0647\u0629 \u062F\u062E\u0648\u0644 \u062C\u0627\u0647\u0632\u0629 \u0644\u0644\u062A\u0646\u0642\u0644 \u0628\u064A\u0646 \u0623\u062F\u0648\u0627\u0631 \u0627\u0644\u0645\u0646\u0635\u0629 \u0628\u062B\u0642\u0629 \u0648\u0648\u0636\u0648\u062D.");
             i0.ɵɵelementEnd();
             i0.ɵɵelementStart(15, "p", 9);
-            i0.ɵɵtext(16, " \u0627\u062F\u062E\u0644 \u0628\u0627\u0644\u062D\u0633\u0627\u0628 \u0627\u0644\u0645\u0646\u0627\u0633\u0628 \u0644\u062A\u062C\u0631\u0628\u0629 \u0645\u0633\u0627\u0631 \u0627\u0644\u0645\u0648\u0638\u0641 \u0623\u0648 \u0627\u0644\u0645\u062F\u064A\u0631 \u0623\u0648 \u0627\u0644\u0625\u062F\u0627\u0631\u0629. \u062A\u0645 \u062A\u0635\u0645\u064A\u0645 \u0647\u0630\u0647 \u0627\u0644\u0634\u0627\u0634\u0629 \u0644\u062A\u0628\u062F\u0648 \u0643\u0648\u0627\u062C\u0647\u0629 \u0645\u0646\u062A\u062C \u0646\u0647\u0627\u0626\u064A\u0629 \u0645\u0639 \u0625\u0628\u0642\u0627\u0621 \u062D\u0633\u0627\u0628\u0627\u062A \u0627\u0644\u0639\u0631\u0636 \u0645\u0631\u0626\u064A\u0629 \u0648\u0633\u0647\u0644\u0629 \u0627\u0644\u0627\u0633\u062A\u062E\u062F\u0627\u0645. ");
+            i0.ɵɵtext(16, " \u0627\u062F\u062E\u0644 \u0628\u0627\u0644\u062D\u0633\u0627\u0628 \u0627\u0644\u0645\u0646\u0627\u0633\u0628 \u0644\u062A\u062C\u0631\u0628\u0629 \u0645\u0633\u0627\u0631 \u0627\u0644\u0645\u0648\u0638\u0641 \u0623\u0648 \u0627\u0644\u0645\u062F\u064A\u0631 \u0623\u0648 \u0627\u0644\u0625\u062F\u0627\u0631\u0629. \u062A\u0645 \u062A\u0635\u0645\u064A\u0645 \u0647\u0630\u0647 \u0627\u0644\u0634\u0627\u0634\u0629 \u0644\u062A\u0628\u062F\u0648 \u0643\u0648\u0627\u062C\u0647\u0629 \u0645\u0646\u062A\u062C \u0646\u0647\u0627\u0626\u064A\u0629 \u0645\u0639 \u0625\u0628\u0642\u0627\u0621 \u0627\u0644\u062D\u0633\u0627\u0628\u0627\u062A \u0627\u0644\u062A\u062C\u0631\u064A\u0628\u064A\u0629 \u0645\u0631\u0626\u064A\u0629 \u0648\u0633\u0647\u0644\u0629 \u0627\u0644\u0627\u0633\u062A\u062E\u062F\u0627\u0645. ");
             i0.ɵɵelementEnd();
             i0.ɵɵelementStart(17, "div", 10)(18, "article", 11)(19, "strong");
             i0.ɵɵtext(20, "4");
             i0.ɵɵelementEnd();
             i0.ɵɵelementStart(21, "span");
-            i0.ɵɵtext(22, "\u0623\u062F\u0648\u0627\u0631 \u062C\u0627\u0647\u0632\u0629 \u0644\u0644\u0639\u0631\u0636");
+            i0.ɵɵtext(22, "\u0623\u062F\u0648\u0627\u0631 \u062C\u0627\u0647\u0632\u0629 \u0644\u0644\u062A\u062C\u0631\u0628\u0629");
             i0.ɵɵelementEnd()();
             i0.ɵɵelementStart(23, "article", 11)(24, "strong");
             i0.ɵɵtext(25, "6+");
@@ -164,7 +169,7 @@ export class LoginComponent {
             i0.ɵɵelementStart(38, "div", 13);
             i0.ɵɵelement(39, "app-icon", 15);
             i0.ɵɵelementStart(40, "span");
-            i0.ɵɵtext(41, "\u062D\u0633\u0627\u0628\u0627\u062A \u062A\u062C\u0631\u064A\u0628\u064A\u0629 \u0645\u0648\u062D\u062F\u0629 \u0644\u062A\u0628\u062F\u064A\u0644 \u0627\u0644\u0623\u062F\u0648\u0627\u0631 \u0628\u0633\u0631\u0639\u0629 \u0623\u062B\u0646\u0627\u0621 \u0627\u0644\u0639\u0631\u0636.");
+            i0.ɵɵtext(41, "\u062D\u0633\u0627\u0628\u0627\u062A \u062A\u062C\u0631\u064A\u0628\u064A\u0629 \u0645\u0648\u062D\u062F\u0629 \u0644\u062A\u0628\u062F\u064A\u0644 \u0627\u0644\u0623\u062F\u0648\u0627\u0631 \u0628\u0633\u0631\u0639\u0629 \u0623\u062B\u0646\u0627\u0621 \u0627\u0644\u062A\u0646\u0642\u0644.");
             i0.ɵɵelementEnd()();
             i0.ɵɵelementStart(42, "div", 13);
             i0.ɵɵelement(43, "app-icon", 16);
@@ -208,13 +213,13 @@ export class LoginComponent {
             i0.ɵɵtext(76, "\u0633\u064A\u062A\u0645 \u062A\u0648\u062C\u064A\u0647\u0643 \u0645\u0628\u0627\u0634\u0631\u0629 \u0625\u0644\u0649 \u0644\u0648\u062D\u0629 \u0627\u0644\u062F\u0648\u0631 \u0627\u0644\u0645\u0631\u062A\u0628\u0637\u0629 \u0628\u0627\u0644\u062D\u0633\u0627\u0628 \u0628\u0639\u062F \u0646\u062C\u0627\u062D \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644.");
             i0.ɵɵelementEnd()()()();
             i0.ɵɵelementStart(77, "section", 32)(78, "div", 33)(79, "div")(80, "span", 34);
-            i0.ɵɵtext(81, "\u062D\u0633\u0627\u0628\u0627\u062A \u0627\u0644\u0639\u0631\u0636");
+            i0.ɵɵtext(81, "\u062D\u0633\u0627\u0628\u0627\u062A \u062A\u062C\u0631\u064A\u0628\u064A\u0629");
             i0.ɵɵelementEnd();
             i0.ɵɵelementStart(82, "h2", 20);
             i0.ɵɵtext(83, "\u0645\u0639\u0644\u0648\u0645\u0627\u062A \u0627\u0644\u0645\u0633\u062A\u062E\u062F\u0645\u064A\u0646");
             i0.ɵɵelementEnd();
             i0.ɵɵelementStart(84, "p", 21);
-            i0.ɵɵtext(85, "\u062A\u0628\u0642\u0649 \u0638\u0627\u0647\u0631\u0629 \u0623\u0633\u0641\u0644 \u0627\u0644\u0635\u0641\u062D\u0629 \u0644\u0644\u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0627\u0644\u0633\u0631\u064A\u0639 \u0623\u062B\u0646\u0627\u0621 \u0627\u0644\u062A\u062C\u0631\u0628\u0629.");
+            i0.ɵɵtext(85, "\u062A\u0628\u0642\u0649 \u0638\u0627\u0647\u0631\u0629 \u0623\u0633\u0641\u0644 \u0627\u0644\u0635\u0641\u062D\u0629 \u0644\u0644\u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0627\u0644\u0633\u0631\u064A\u0639 \u0623\u062B\u0646\u0627\u0621 \u0627\u0644\u062A\u0646\u0642\u0644.");
             i0.ɵɵelementEnd()()();
             i0.ɵɵelementStart(86, "div", 35);
             i0.ɵɵtemplate(87, LoginComponent_button_87_Template, 10, 3, "button", 36);
@@ -258,7 +263,7 @@ export class LoginComponent {
         <aside class="login-intro">
           <a class="back-link" routerLink="/home">
             <app-icon name="book-open" [size]="18" />
-            <span>العودة إلى صفحة العرض</span>
+            <span>العودة إلى الصفحة الرئيسية</span>
           </a>
 
           <div class="brand-mark">
@@ -266,16 +271,16 @@ export class LoginComponent {
             <span class="eyebrow">منصة ربط التدريب بالأثر</span>
           </div>
 
-          <h1>واجهة دخول جاهزة للعرض والتنقل بين أدوار المنصة بثقة ووضوح.</h1>
+          <h1>واجهة دخول جاهزة للتنقل بين أدوار المنصة بثقة ووضوح.</h1>
           <p class="intro-copy">
             ادخل بالحساب المناسب لتجربة مسار الموظف أو المدير أو الإدارة. تم تصميم هذه الشاشة لتبدو
-            كواجهة منتج نهائية مع إبقاء حسابات العرض مرئية وسهلة الاستخدام.
+            كواجهة منتج نهائية مع إبقاء الحسابات التجريبية مرئية وسهلة الاستخدام.
           </p>
 
           <div class="intro-grid">
             <article class="intro-stat">
               <strong>4</strong>
-              <span>أدوار جاهزة للعرض</span>
+              <span>أدوار جاهزة للتجربة</span>
             </article>
             <article class="intro-stat">
               <strong>6+</strong>
@@ -294,7 +299,7 @@ export class LoginComponent {
             </div>
             <div class="intro-highlight">
               <app-icon name="shield" [size]="18" />
-              <span>حسابات تجريبية موحدة لتبديل الأدوار بسرعة أثناء العرض.</span>
+              <span>حسابات تجريبية موحدة لتبديل الأدوار بسرعة أثناء التنقل.</span>
             </div>
             <div class="intro-highlight">
               <app-icon name="bolt" [size]="18" />
@@ -358,9 +363,9 @@ export class LoginComponent {
       <section class="accounts-panel card">
         <div class="accounts-panel__header">
           <div>
-            <span class="eyebrow eyebrow--muted">حسابات العرض</span>
+            <span class="eyebrow eyebrow--muted">حسابات تجريبية</span>
             <h2 class="section-title">معلومات المستخدمين</h2>
-            <p class="section-subtitle">تبقى ظاهرة أسفل الصفحة للاستخدام السريع أثناء التجربة.</p>
+            <p class="section-subtitle">تبقى ظاهرة أسفل الصفحة للاستخدام السريع أثناء التنقل.</p>
           </div>
         </div>
 

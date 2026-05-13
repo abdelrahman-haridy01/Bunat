@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 
 import { CourseStatus, DifficultyLevel } from 'src/common/enums/domain.enums';
+import { LessonQuiz, LessonQuizSchema } from 'src/lessons/schemas/lesson.schema';
 
 export type CourseDocument = HydratedDocument<Course>;
 
@@ -28,9 +29,14 @@ export class Course {
   @Prop({ enum: CourseStatus, default: CourseStatus.Draft })
   status!: CourseStatus;
 
+  @Prop({ type: LessonQuizSchema, default: null })
+  finalQuiz!: LessonQuiz | null;
+
+  @Prop({ default: false })
+  certificateEnabled!: boolean;
+
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   createdBy!: Types.ObjectId;
 }
 
 export const CourseSchema = SchemaFactory.createForClass(Course);
-

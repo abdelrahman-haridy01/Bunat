@@ -2,9 +2,11 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal, v
 import { CommonModule } from '@angular/common';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { finalize, forkJoin, switchMap } from 'rxjs';
 
 import { CoursesApiService } from '../../../core/services/courses-api.service';
-import { Course, Lesson } from '../../../core/models/domain.models';
+import { AiCourseDraftResponse, Course, Lesson } from '../../../core/models/domain.models';
+import { AuthService } from '../../../core/services/auth.service';
 import { LookupsApiService } from '../../../core/services/lookups-api.service';
 import { DataTableComponent, DialogComponent, IconComponent } from '../../../shared/components';
 import {
@@ -50,6 +52,12 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
               <span class="btn-content">
                 <app-icon name="book-open" [size]="18" />
                 <span>إضافة دورة</span>
+              </span>
+            </button>
+            <button class="btn btn-secondary" type="button" (click)="openAiDialog()">
+              <span class="btn-content">
+                <app-icon name="sparkles" [size]="18" />
+                <span>توليد بالذكاء الاصطناعي</span>
               </span>
             </button>
             <button class="btn btn-secondary" type="button" (click)="openLessonDialog()">
@@ -113,13 +121,13 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
                 }}
               </div>
             </div>
-            <div class="field">
+            <div class="field" *ngIf="canManageCourseLookups()">
               <label>المهارات</label>
               <select multiple formControlName="skillIds">
                 <option *ngFor="let skill of skills()" [value]="skill._id">{{ skill.name }}</option>
               </select>
             </div>
-            <div class="field">
+            <div class="field" *ngIf="canManageCourseLookups()">
               <label>المؤشرات</label>
               <select multiple formControlName="kpiIds">
                 <option *ngFor="let kpi of kpis()" [value]="kpi._id">{{ kpi.name }}</option>
@@ -133,6 +141,10 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
                 <option value="archived">مؤرشفة</option>
               </select>
             </div>
+            <label class="checkbox-field field--full">
+              <input type="checkbox" formControlName="certificateEnabled" />
+              <span>تفعيل شهادة إتمام لهذه الدورة</span>
+            </label>
           </div>
           <div class="field">
             <label>الوصف</label>
@@ -150,6 +162,74 @@ function lessonContentValidator(control: AbstractControl): ValidationErrors | nu
             <button class="btn btn-ghost" type="button" (click)="closeCourseDialog()">إلغاء</button>
             <button class="btn btn-primary" type="submit" [disabled]="courseForm.invalid">
               {{ isEditMode() ? 'حفظ التعديلات' : 'حفظ الدورة' }}
+            </button>
+          </div>
+        </form>
+      </app-dialog>
+
+      <app-dialog
+        #aiDialog
+        title="إنشاء دورة بالذكاء الاصطناعي"
+        subtitle="ولّد دورة مبدئية مع الدروس والشرائح والاختبار النهائي ثم راجعها قبل الحفظ."
+        icon="sparkles"
+      >
+        <form class="dialog-form" [formGroup]="aiDraftForm" (ngSubmit)="generateAiDraft()" novalidate>
+          <div class="form-grid">
+            <div class="field">
+              <label>موضوع الدورة</label>
+              <input formControlName="topic" />
+            </div>
+            <div class="field">
+              <label>الفئة المستهدفة</label>
+              <input formControlName="targetAudience" />
+            </div>
+            <div class="field">
+              <label>المستوى</label>
+              <select formControlName="difficulty">
+                <option value="beginner">مبتدئ</option>
+                <option value="intermediate">متوسط</option>
+                <option value="advanced">متقدم</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>المدة التقديرية</label>
+              <input type="number" formControlName="estimatedDurationMinutes" />
+            </div>
+            <div class="field">
+              <label>عدد الدروس</label>
+              <input type="number" formControlName="lessonCount" />
+            </div>
+            <div class="field">
+              <label>عدد أسئلة الاختبار النهائي</label>
+              <input type="number" formControlName="finalExamQuestionCount" />
+            </div>
+            <div class="field field--full">
+              <label>الأهداف التعليمية</label>
+              <textarea rows="3" formControlName="learningObjectives"></textarea>
+            </div>
+            <div class="field field--full">
+              <label>ملاحظات إضافية</label>
+              <textarea rows="3" formControlName="notes"></textarea>
+            </div>
+            <label class="checkbox-field field--full">
+              <input type="checkbox" formControlName="includeFinalExam" />
+              <span>إنشاء اختبار نهائي</span>
+            </label>
+          </div>
+
+          <div class="message-box info" *ngIf="aiDraftPreview() as draft">
+            <strong>{{ draft.course.title }}</strong>
+            <p>{{ draft.course.description }}</p>
+            <p>{{ draft.lessons.length }} دروس • {{ draft.finalQuiz?.questions?.length || 0 }} أسئلة نهائية</p>
+          </div>
+
+          <div class="dialog-actions">
+            <button class="btn btn-ghost" type="button" (click)="closeAiDialog()">إلغاء</button>
+            <button class="btn btn-secondary" type="submit" [disabled]="aiDraftForm.invalid || loadingAiDraft()">
+              {{ loadingAiDraft() ? 'جارٍ التوليد...' : 'توليد المسودة' }}
+            </button>
+            <button class="btn btn-primary" type="button" (click)="createCourseFromAiDraft()" [disabled]="!aiDraftPreview() || creatingAiCourse()">
+              {{ creatingAiCourse() ? 'جارٍ الإنشاء...' : 'إنشاء الدورة من المسودة' }}
             </button>
           </div>
         </form>
@@ -307,8 +387,10 @@ export class CoursesManagementComponent implements OnInit {
   private readonly coursesApi = inject(CoursesApiService);
   private readonly lookupsApi = inject(LookupsApiService);
   private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
 
   protected readonly courseDialog = viewChild.required<DialogComponent>('courseDialog');
+  protected readonly aiDialog = viewChild.required<DialogComponent>('aiDialog');
   protected readonly lessonDialog = viewChild.required<DialogComponent>('lessonDialog');
   protected readonly deleteDialog = viewChild.required<DialogComponent>('deleteDialog');
   protected readonly courses = signal<Course[]>([]);
@@ -317,6 +399,12 @@ export class CoursesManagementComponent implements OnInit {
   protected readonly editingCourse = signal<Course | null>(null);
   protected readonly deletingCourse = signal<Course | null>(null);
   protected readonly uploadedLessonFileName = signal('');
+  protected readonly aiDraftPreview = signal<AiCourseDraftResponse | null>(null);
+  protected readonly loadingAiDraft = signal(false);
+  protected readonly creatingAiCourse = signal(false);
+  protected readonly canManageCourseLookups = computed(
+    () => this.authService.currentUser()?.role !== 'course_manager',
+  );
   protected readonly isEditMode = computed(() => !!this.editingCourse());
   protected readonly hasVisibleError = hasVisibleError;
   protected readonly getVisibleErrorMessage = getVisibleErrorMessage;
@@ -374,6 +462,19 @@ export class CoursesManagementComponent implements OnInit {
     skillIds: [[] as string[]],
     kpiIds: [[] as string[]],
     status: ['published'],
+    certificateEnabled: [false],
+  });
+
+  protected readonly aiDraftForm = this.fb.nonNullable.group({
+    topic: ['', Validators.required],
+    targetAudience: [''],
+    difficulty: ['beginner' as Course['difficulty'], Validators.required],
+    estimatedDurationMinutes: [60, [Validators.required, Validators.min(15)]],
+    lessonCount: [4, [Validators.required, Validators.min(1), Validators.max(12)]],
+    learningObjectives: [''],
+    notes: [''],
+    includeFinalExam: [true],
+    finalExamQuestionCount: [5, [Validators.required, Validators.min(3), Validators.max(20)]],
   });
 
   protected readonly lessonForm = this.fb.nonNullable.group(
@@ -404,6 +505,7 @@ export class CoursesManagementComponent implements OnInit {
       skillIds: [],
       kpiIds: [],
       status: 'published',
+      certificateEnabled: false,
     });
     clearControlState(this.courseForm);
     this.courseDialog().open();
@@ -411,6 +513,27 @@ export class CoursesManagementComponent implements OnInit {
 
   protected closeCourseDialog() {
     this.courseDialog().close();
+  }
+
+  protected openAiDialog() {
+    this.aiDraftPreview.set(null);
+    this.aiDraftForm.reset({
+      topic: '',
+      targetAudience: '',
+      difficulty: 'beginner',
+      estimatedDurationMinutes: 60,
+      lessonCount: 4,
+      learningObjectives: '',
+      notes: '',
+      includeFinalExam: true,
+      finalExamQuestionCount: 5,
+    });
+    clearControlState(this.aiDraftForm);
+    this.aiDialog().open();
+  }
+
+  protected closeAiDialog() {
+    this.aiDialog().close();
   }
 
   protected closeDeleteDialog() {
@@ -474,6 +597,7 @@ export class CoursesManagementComponent implements OnInit {
       skillIds: course.skillIds.map((item) => (typeof item === 'string' ? item : item._id || '')).filter(Boolean),
       kpiIds: course.kpiIds.map((item) => (typeof item === 'string' ? item : item._id || '')).filter(Boolean),
       status: course.status,
+      certificateEnabled: !!course.certificateEnabled,
     });
     clearControlState(this.courseForm);
     this.courseDialog().open();
@@ -490,7 +614,7 @@ export class CoursesManagementComponent implements OnInit {
       return;
     }
 
-    this.router.navigate(['/admin/courses', courseId, 'lessons']);
+    this.router.navigate([this.managementBasePath(), 'courses', courseId, 'lessons']);
   }
 
   protected submitCourse() {
@@ -502,6 +626,7 @@ export class CoursesManagementComponent implements OnInit {
       ...this.courseForm.getRawValue(),
       difficulty: this.courseForm.getRawValue().difficulty as Course['difficulty'],
       status: this.courseForm.getRawValue().status as Course['status'],
+      certificateEnabled: this.courseForm.getRawValue().certificateEnabled,
     };
 
     const editingCourse = this.editingCourse();
@@ -525,6 +650,7 @@ export class CoursesManagementComponent implements OnInit {
         skillIds: [],
         kpiIds: [],
         status: 'published',
+        certificateEnabled: false,
       });
       this.closeCourseDialog();
       this.loadCourses();
@@ -563,8 +689,74 @@ export class CoursesManagementComponent implements OnInit {
         isRequired: true,
       });
       this.closeLessonDialog();
-      this.router.navigate(['/admin/courses', payload.courseId, 'lessons']);
+      this.router.navigate([this.managementBasePath(), 'courses', payload.courseId, 'lessons']);
     });
+  }
+
+  protected generateAiDraft() {
+    if (this.aiDraftForm.invalid || this.loadingAiDraft()) {
+      touchAllControls(this.aiDraftForm);
+      return;
+    }
+
+    const value = this.aiDraftForm.getRawValue();
+    this.loadingAiDraft.set(true);
+    this.aiDraftPreview.set(null);
+    this.coursesApi
+      .generateCourseDraft({
+        topic: value.topic.trim(),
+        targetAudience: value.targetAudience.trim() || undefined,
+        difficulty: value.difficulty,
+        estimatedDurationMinutes: Number(value.estimatedDurationMinutes),
+        lessonCount: Number(value.lessonCount),
+        learningObjectives: value.learningObjectives
+          .split('\n')
+          .map((item) => item.trim())
+          .filter(Boolean),
+        notes: value.notes.trim() || undefined,
+        includeFinalExam: value.includeFinalExam,
+        finalExamQuestionCount: Number(value.finalExamQuestionCount),
+      })
+      .pipe(finalize(() => this.loadingAiDraft.set(false)))
+      .subscribe((draft) => this.aiDraftPreview.set(draft));
+  }
+
+  protected createCourseFromAiDraft() {
+    const draft = this.aiDraftPreview();
+    if (!draft || this.creatingAiCourse()) {
+      return;
+    }
+
+    this.creatingAiCourse.set(true);
+    this.coursesApi
+      .createCourse({
+        ...draft.course,
+        finalQuiz: draft.finalQuiz || null,
+        skillIds: [],
+        kpiIds: [],
+      })
+      .pipe(
+        switchMap((course) => {
+          const courseId = course._id || course.id || '';
+          return forkJoin(
+            draft.lessons.map((lesson) =>
+              this.coursesApi.createLesson({
+                ...lesson,
+                courseId,
+              }),
+            ),
+          ).pipe(switchMap(() => this.coursesApi.getCourse(courseId)));
+        }),
+        finalize(() => this.creatingAiCourse.set(false)),
+      )
+      .subscribe((course) => {
+        const courseId = course._id || course.id || '';
+        this.closeAiDialog();
+        this.loadCourses();
+        if (courseId) {
+          this.router.navigate([this.managementBasePath(), 'courses', courseId, 'lessons']);
+        }
+      });
   }
 
   protected lessonUsesTextContent() {
@@ -654,12 +846,22 @@ export class CoursesManagementComponent implements OnInit {
 
   private loadData() {
     this.loadCourses();
+    if (!this.canManageCourseLookups()) {
+      this.skills.set([]);
+      this.kpis.set([]);
+      return;
+    }
+
     this.lookupsApi.getSkills().subscribe((response) => this.skills.set(response));
     this.lookupsApi.getKpis().subscribe((response) => this.kpis.set(response));
   }
 
   private loadCourses() {
     this.coursesApi.getCourses().subscribe((response) => this.courses.set(response));
+  }
+
+  private managementBasePath() {
+    return this.authService.currentUser()?.role === 'course_manager' ? '/content' : '/admin';
   }
 
   private difficultyLabel(value: Course['difficulty']) {

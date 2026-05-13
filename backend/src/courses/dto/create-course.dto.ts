@@ -1,6 +1,18 @@
-import { ArrayUnique, IsArray, IsEnum, IsMongoId, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  ArrayUnique,
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsMongoId,
+  IsNumber,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
 import { CourseStatus, DifficultyLevel } from 'src/common/enums/domain.enums';
+import { LessonQuizDto } from 'src/lessons/dto/create-lesson.dto';
 
 export class CreateCourseDto {
   @IsString()
@@ -28,5 +40,13 @@ export class CreateCourseDto {
   @IsOptional()
   @IsEnum(CourseStatus)
   status?: CourseStatus;
-}
 
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LessonQuizDto)
+  finalQuiz?: LessonQuizDto | null;
+
+  @IsOptional()
+  @IsBoolean()
+  certificateEnabled?: boolean;
+}

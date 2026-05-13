@@ -57,6 +57,8 @@ export class AuthService {
       case 'admin':
       case 'hr':
         return '/admin/dashboard';
+      case 'course_manager':
+        return '/content/courses';
       default:
         return '/login';
     }
@@ -67,4 +69,3 @@ export class AuthService {
     return raw ? (JSON.parse(raw) as UserSummary) : null;
   }
 }
-
