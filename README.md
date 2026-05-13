@@ -98,11 +98,18 @@ Available users:
 - `hr@bunat.local` — HR
 - `manager@bunat.local` — Manager
 - `content@bunat.local` — Course Manager
+- `manager.lang@bunat.local` — Manager
+- `manager.culture@bunat.local` — Manager
+- `manager.tech@bunat.local` — Manager
 - `employee1@bunat.local` — Employee
 - `employee2@bunat.local` — Employee
 - `employee3@bunat.local` — Employee
 - `employee4@bunat.local` — Employee
 - `employee5@bunat.local` — Employee
+- `employee6@bunat.local` — Employee
+- `employee7@bunat.local` — Employee
+- `employee8@bunat.local` — Employee
+- `employee9@bunat.local` — Employee
 
 ## Main backend endpoints
 

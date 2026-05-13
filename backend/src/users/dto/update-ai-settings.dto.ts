@@ -1,6 +1,12 @@
-import { IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsIn, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+
+import { AI_PROVIDERS, AiProvider } from '../schemas/user-ai-settings.schema';
 
 export class UpdateAiSettingsDto {
+  @IsOptional()
+  @IsIn(AI_PROVIDERS)
+  provider?: AiProvider;
+
   @IsOptional()
   @IsString()
   apiKey?: string;

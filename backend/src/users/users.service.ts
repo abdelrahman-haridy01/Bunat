@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -9,11 +9,13 @@ import { hashPassword } from 'src/common/utils/password.util';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateAiSettingsDto } from './dto/update-ai-settings.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { UserAiSettings, UserAiSettingsDocument } from './schemas/user-ai-settings.schema';
+import { AiProvider, UserAiSettings, UserAiSettingsDocument } from './schemas/user-ai-settings.schema';
 import { User, UserDocument } from './schemas/user.schema';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
     @InjectModel(UserAiSettings.name)
@@ -110,12 +112,11 @@ export class UsersService {
     if (!settings) {
       return null;
     }
-
-    const secret = this.getAiSettingsSecret();
+    const apiKey = this.getStoredApiKey(settings, userId);
 
     return {
       provider: settings.provider,
-      apiKey: decryptSecret(settings.encryptedApiKey, secret),
+      apiKey,
       model: settings.model,
       baseUrl: settings.baseUrl,
       language: settings.language,
@@ -126,20 +127,28 @@ export class UsersService {
 
   async updateAiSettings(userId: string, updateAiSettingsDto: UpdateAiSettingsDto) {
     const existingSettings = await this.userAiSettingsModel.findOne({ userId: toObjectId(userId) }).exec();
+    const nextProvider = updateAiSettingsDto.provider || existingSettings?.provider || 'openai';
+    const nextApiKey = updateAiSettingsDto.apiKey?.trim() || '';
 
-    if (!existingSettings && !updateAiSettingsDto.apiKey) {
-      throw new BadRequestException('أدخل مفتاح OpenAI API أولاً.');
+    if (!existingSettings && !nextApiKey) {
+      throw new BadRequestException(`أدخل مفتاح ${this.getProviderLabel(nextProvider)} أولاً.`);
+    }
+
+    if (existingSettings && nextProvider !== existingSettings.provider && !nextApiKey) {
+      throw new BadRequestException('عند تغيير المزود، أدخل مفتاح API جديداً للمزود الجديد.');
     }
 
     const payload: Record<string, unknown> = {
-      provider: 'openai',
+      provider: nextProvider,
     };
 
-    if (updateAiSettingsDto.apiKey) {
-      payload['encryptedApiKey'] = encryptSecret(updateAiSettingsDto.apiKey.trim(), this.getAiSettingsSecret());
+    if (nextApiKey) {
+      payload['encryptedApiKey'] = encryptSecret(nextApiKey, this.getAiSettingsSecret());
     }
     if ('model' in updateAiSettingsDto && updateAiSettingsDto.model) {
       payload['model'] = updateAiSettingsDto.model.trim();
+    } else if (existingSettings && nextProvider !== existingSettings.provider) {
+      payload['model'] = this.getDefaultModel(nextProvider);
     }
     if ('baseUrl' in updateAiSettingsDto) {
       payload['baseUrl'] = updateAiSettingsDto.baseUrl?.trim() || null;
@@ -166,7 +175,7 @@ export class UsersService {
           $set: payload,
           $setOnInsert: {
             userId: toObjectId(userId),
-            model: updateAiSettingsDto.model?.trim() || 'gpt-4o-mini',
+            model: updateAiSettingsDto.model?.trim() || this.getDefaultModel(nextProvider),
             language: updateAiSettingsDto.language?.trim() || 'ar',
             defaultLessonCount: updateAiSettingsDto.defaultLessonCount ?? 5,
             defaultFinalExamQuestionCount: updateAiSettingsDto.defaultFinalExamQuestionCount ?? 5,
@@ -213,7 +222,7 @@ export class UsersService {
       };
     }
 
-    const decryptedApiKey = decryptSecret(settings.encryptedApiKey, this.getAiSettingsSecret());
+    const decryptedApiKey = this.getStoredApiKey(settings);
     const visibleSuffix = decryptedApiKey ? `••••${decryptedApiKey.slice(-4)}` : null;
 
     return {
@@ -228,11 +237,41 @@ export class UsersService {
     };
   }
 
+  private getProviderLabel(provider: AiProvider) {
+    return provider === 'gemini' ? 'Google Gemini API' : 'OpenAI API';
+  }
+
+  private getDefaultModel(provider: AiProvider) {
+    return provider === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4o-mini';
+  }
+
   private getAiSettingsSecret() {
     return (
       this.configService.get<string>('AI_SETTINGS_ENCRYPTION_KEY') ||
       this.configService.get<string>('JWT_SECRET') ||
       'change-me'
     );
+  }
+
+  private getStoredApiKey(settings: Pick<UserAiSettings, 'encryptedApiKey'>, userId?: string) {
+    const storedValue = settings.encryptedApiKey?.trim();
+    if (!storedValue) {
+      return null;
+    }
+
+    if (!storedValue.includes(':')) {
+      return storedValue;
+    }
+
+    try {
+      return decryptSecret(storedValue, this.getAiSettingsSecret());
+    } catch (error) {
+      this.logger.warn(
+        `Unable to decrypt AI settings API key${userId ? ` for user ${userId}` : ''}: ${
+          error instanceof Error ? error.message : 'unknown error'
+        }`,
+      );
+      return null;
+    }
   }
 }

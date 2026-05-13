@@ -2,14 +2,16 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 
 export type UserAiSettingsDocument = HydratedDocument<UserAiSettings>;
+export const AI_PROVIDERS = ['openai', 'gemini'] as const;
+export type AiProvider = (typeof AI_PROVIDERS)[number];
 
 @Schema({ timestamps: true })
 export class UserAiSettings {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true, unique: true })
   userId!: Types.ObjectId;
 
-  @Prop({ default: 'openai' })
-  provider!: string;
+  @Prop({ enum: AI_PROVIDERS, default: 'openai' })
+  provider!: AiProvider;
 
   @Prop({ required: true })
   encryptedApiKey!: string;

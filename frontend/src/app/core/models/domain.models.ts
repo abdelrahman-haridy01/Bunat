@@ -116,7 +116,7 @@ export interface Enrollment {
 }
 
 export interface AiSettings {
-  provider: 'openai';
+  provider: 'openai' | 'gemini';
   hasApiKey: boolean;
   maskedApiKey?: string | null;
   model: string;

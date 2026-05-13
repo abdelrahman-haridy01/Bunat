@@ -34,6 +34,9 @@ type StructuredCourseDraft = {
   } | null;
 };
 
+type ResolvedAiSettings = NonNullable<Awaited<ReturnType<UsersService['getResolvedAiSettings']>>>;
+type ActiveAiSettings = ResolvedAiSettings & { apiKey: string };
+
 @Injectable()
 export class AiService {
   constructor(private readonly usersService: UsersService) {}
@@ -41,10 +44,28 @@ export class AiService {
   async generateCourseDraft(userId: string, createCourseDraftDto: CreateCourseDraftDto) {
     const settings = await this.usersService.getResolvedAiSettings(userId);
     if (!settings?.apiKey) {
-      throw new BadRequestException('أضف إعدادات OpenAI من صفحة الإعدادات قبل استخدام التوليد الذكي.');
+      throw new BadRequestException('أضف مفتاح OpenAI أو Gemini من صفحة الإعدادات قبل استخدام التوليد الذكي.');
+    }
+    const activeSettings: ActiveAiSettings = {
+      ...settings,
+      apiKey: settings.apiKey,
+    };
+
+    const outputText =
+      activeSettings.provider === 'gemini'
+        ? await this.generateWithGemini(activeSettings, createCourseDraftDto)
+        : await this.generateWithOpenAi(activeSettings, createCourseDraftDto);
+
+    if (!outputText) {
+      throw new InternalServerErrorException('لم يتم إرجاع محتوى صالح من خدمة الذكاء الاصطناعي.');
     }
 
-    const response = await fetch(`${settings.baseUrl || 'https://api.openai.com'}/v1/responses`, {
+    const draft = JSON.parse(outputText) as StructuredCourseDraft;
+    return this.normalizeDraft(draft, createCourseDraftDto);
+  }
+
+  private async generateWithOpenAi(settings: ActiveAiSettings, request: CreateCourseDraftDto) {
+    const response = await fetch(`${this.normalizeBaseUrl(settings.baseUrl, 'https://api.openai.com')}/v1/responses`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -58,12 +79,7 @@ export class AiService {
             content: [
               {
                 type: 'input_text',
-                text: [
-                  'You generate structured employee training course drafts.',
-                  'Return only JSON that matches the provided schema.',
-                  'Write concise, professional training content.',
-                  `Default output language: ${createCourseDraftDto.language || settings.language || 'ar'}.`,
-                ].join(' '),
+                text: this.buildSystemPrompt(request, settings.language),
               },
             ],
           },
@@ -72,18 +88,7 @@ export class AiService {
             content: [
               {
                 type: 'input_text',
-                text: JSON.stringify({
-                  topic: createCourseDraftDto.topic,
-                  targetAudience: createCourseDraftDto.targetAudience || '',
-                  learningObjectives: createCourseDraftDto.learningObjectives || [],
-                  difficulty: createCourseDraftDto.difficulty,
-                  estimatedDurationMinutes: createCourseDraftDto.estimatedDurationMinutes,
-                  lessonCount: createCourseDraftDto.lessonCount,
-                  notes: createCourseDraftDto.notes || '',
-                  includeFinalExam: createCourseDraftDto.includeFinalExam ?? true,
-                  finalExamQuestionCount:
-                    createCourseDraftDto.finalExamQuestionCount || settings.defaultFinalExamQuestionCount || 5,
-                }),
+                text: JSON.stringify(this.buildCourseDraftRequest(request, settings)),
               },
             ],
           },
@@ -93,92 +98,7 @@ export class AiService {
             type: 'json_schema',
             name: 'course_draft',
             strict: true,
-            schema: {
-              type: 'object',
-              additionalProperties: false,
-              required: ['course', 'lessons', 'finalQuiz'],
-              properties: {
-                course: {
-                  type: 'object',
-                  additionalProperties: false,
-                  required: ['title', 'description', 'estimatedDurationMinutes'],
-                  properties: {
-                    title: { type: 'string' },
-                    description: { type: 'string' },
-                    estimatedDurationMinutes: { type: 'number' },
-                  },
-                },
-                lessons: {
-                  type: 'array',
-                  minItems: 1,
-                  items: {
-                    type: 'object',
-                    additionalProperties: false,
-                    required: ['title', 'contentType', 'durationMinutes', 'isRequired', 'slides'],
-                    properties: {
-                      title: { type: 'string' },
-                      contentType: {
-                        type: 'string',
-                        enum: [
-                          LessonContentType.Article,
-                          LessonContentType.Task,
-                          LessonContentType.Video,
-                          LessonContentType.Pdf,
-                        ],
-                      },
-                      durationMinutes: { type: 'number' },
-                      isRequired: { type: 'boolean' },
-                      slides: {
-                        type: 'array',
-                        minItems: 1,
-                        items: {
-                          type: 'object',
-                          additionalProperties: false,
-                          required: ['title', 'body'],
-                          properties: {
-                            title: { type: 'string' },
-                            body: { type: 'string' },
-                            mediaUrl: { type: ['string', 'null'] },
-                            notes: { type: ['string', 'null'] },
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-                finalQuiz: {
-                  anyOf: [
-                    { type: 'null' },
-                    {
-                      type: 'object',
-                      additionalProperties: false,
-                      required: ['passingScorePercentage', 'questions'],
-                      properties: {
-                        passingScorePercentage: { type: 'number' },
-                        questions: {
-                          type: 'array',
-                          minItems: 1,
-                          items: {
-                            type: 'object',
-                            additionalProperties: false,
-                            required: ['prompt', 'options', 'correctOptionIndex'],
-                            properties: {
-                              prompt: { type: 'string' },
-                              options: {
-                                type: 'array',
-                                minItems: 2,
-                                items: { type: 'string' },
-                              },
-                              correctOptionIndex: { type: 'number' },
-                            },
-                          },
-                        },
-                      },
-                    },
-                  ],
-                },
-              },
-            },
+            schema: this.buildDraftSchema(),
           },
         },
       }),
@@ -193,17 +113,175 @@ export class AiService {
       output_text?: string;
       output?: Array<{ content?: Array<{ text?: string }> }>;
     };
-    const outputText =
-      payload.output_text ||
-      payload.output?.flatMap((item) => item.content || []).map((item) => item.text || '').join('') ||
-      '';
+    return payload.output_text || payload.output?.flatMap((item) => item.content || []).map((item) => item.text || '').join('') || '';
+  }
 
-    if (!outputText) {
-      throw new InternalServerErrorException('لم يتم إرجاع محتوى صالح من خدمة الذكاء الاصطناعي.');
+  private async generateWithGemini(settings: ActiveAiSettings, request: CreateCourseDraftDto) {
+    const modelPath = settings.model.startsWith('models/') ? settings.model : `models/${settings.model}`;
+    const response = await fetch(
+      `${this.normalizeBaseUrl(settings.baseUrl, 'https://generativelanguage.googleapis.com')}/v1beta/${modelPath}:generateContent?key=${encodeURIComponent(settings.apiKey)}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          systemInstruction: {
+            role: 'system',
+            parts: [
+              {
+                text: this.buildSystemPrompt(request, settings.language),
+              },
+            ],
+          },
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  text: JSON.stringify(this.buildCourseDraftRequest(request, settings)),
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            responseSchema: this.buildDraftSchema(),
+          },
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const details = await response.text();
+      throw new InternalServerErrorException(`فشل التوليد الذكي: ${details}`);
     }
 
-    const draft = JSON.parse(outputText) as StructuredCourseDraft;
-    return this.normalizeDraft(draft, createCourseDraftDto);
+    const payload = (await response.json()) as {
+      candidates?: Array<{
+        content?: {
+          parts?: Array<{ text?: string }>;
+        };
+      }>;
+    };
+
+    return payload.candidates?.flatMap((candidate) => candidate.content?.parts || []).map((part) => part.text || '').join('') || '';
+  }
+
+  private buildSystemPrompt(request: CreateCourseDraftDto, defaultLanguage: string) {
+    return [
+      'You generate structured employee training course drafts.',
+      'Return only JSON that matches the provided schema.',
+      'Write concise, professional training content.',
+      `Default output language: ${request.language || defaultLanguage || 'ar'}.`,
+    ].join(' ');
+  }
+
+  private buildCourseDraftRequest(request: CreateCourseDraftDto, settings: ResolvedAiSettings) {
+    return {
+      topic: request.topic,
+      targetAudience: request.targetAudience || '',
+      learningObjectives: request.learningObjectives || [],
+      difficulty: request.difficulty,
+      estimatedDurationMinutes: request.estimatedDurationMinutes,
+      lessonCount: request.lessonCount,
+      notes: request.notes || '',
+      includeFinalExam: request.includeFinalExam ?? true,
+      finalExamQuestionCount: request.finalExamQuestionCount || settings.defaultFinalExamQuestionCount || 5,
+    };
+  }
+
+  private buildDraftSchema() {
+    return {
+      type: 'object',
+      additionalProperties: false,
+      required: ['course', 'lessons', 'finalQuiz'],
+      properties: {
+        course: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['title', 'description', 'estimatedDurationMinutes'],
+          properties: {
+            title: { type: 'string' },
+            description: { type: 'string' },
+            estimatedDurationMinutes: { type: 'number' },
+          },
+        },
+        lessons: {
+          type: 'array',
+          minItems: 1,
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['title', 'contentType', 'durationMinutes', 'isRequired', 'slides'],
+            properties: {
+              title: { type: 'string' },
+              contentType: {
+                type: 'string',
+                enum: [
+                  LessonContentType.Article,
+                  LessonContentType.Task,
+                  LessonContentType.Video,
+                  LessonContentType.Pdf,
+                ],
+              },
+              durationMinutes: { type: 'number' },
+              isRequired: { type: 'boolean' },
+              slides: {
+                type: 'array',
+                minItems: 1,
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['title', 'body'],
+                  properties: {
+                    title: { type: 'string' },
+                    body: { type: 'string' },
+                    mediaUrl: { type: ['string', 'null'] },
+                    notes: { type: ['string', 'null'] },
+                  },
+                },
+              },
+            },
+          },
+        },
+        finalQuiz: {
+          anyOf: [
+            { type: 'null' },
+            {
+              type: 'object',
+              additionalProperties: false,
+              required: ['passingScorePercentage', 'questions'],
+              properties: {
+                passingScorePercentage: { type: 'number' },
+                questions: {
+                  type: 'array',
+                  minItems: 1,
+                  items: {
+                    type: 'object',
+                    additionalProperties: false,
+                    required: ['prompt', 'options', 'correctOptionIndex'],
+                    properties: {
+                      prompt: { type: 'string' },
+                      options: {
+                        type: 'array',
+                        minItems: 2,
+                        items: { type: 'string' },
+                      },
+                      correctOptionIndex: { type: 'number' },
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    };
+  }
+
+  private normalizeBaseUrl(baseUrl: string | null | undefined, fallback: string) {
+    return (baseUrl || fallback).replace(/\/+$/, '');
   }
 
   private normalizeDraft(draft: StructuredCourseDraft, request: CreateCourseDraftDto) {
