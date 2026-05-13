@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { IconComponent } from '../../../shared/components';
@@ -8,27 +8,10 @@ import { IconComponent } from '../../../shared/components';
 @Component({
   selector: 'app-landing',
   standalone: true,
-  imports: [CommonModule, IconComponent],
+  imports: [CommonModule, RouterLink, IconComponent],
   template: `
     <div class="landing-shell">
       <section class="landing-hero">
-        <header class="landing-topbar">
-          <div class="brand-mark">
-            <img class="brand-mark__icon" src="assets/bunat-small-logo.svg" alt="شعار بُناة" />
-            <div>
-              <strong>بُناة</strong>
-              <p>منصة داخلية لربط التدريب بالأثر على الأداء</p>
-            </div>
-          </div>
-
-          <div class="landing-topbar__actions">
-            <button class="btn btn-ghost" type="button" (click)="goToLogin()">تسجيل الدخول</button>
-            <button *ngIf="isAuthenticated()" class="btn btn-secondary" type="button" (click)="goToWorkspace()">
-              الانتقال إلى لوحتي
-            </button>
-          </div>
-        </header>
-
         <div class="hero-grid">
           <div class="hero-copy">
             <div class="hero-copy__meta">
@@ -151,6 +134,27 @@ import { IconComponent } from '../../../shared/components';
       </section>
 
       <section class="section-band">
+        <div class="section-heading">
+          <span class="eyebrow">صفحات عامة</span>
+          <h2>أضفنا صفحات ثابتة مرافقة للرئيسية لشرح المنصة ومتابعة تطورها بسرعة.</h2>
+          <p>إذا كنت تريد قراءة نبذة مركزة أو مراجعة ما يغطيه الإصدار الحالي، فهذه الروابط هي الأقرب.</p>
+        </div>
+
+        <div class="page-links">
+          <a class="page-link card" *ngFor="let page of publicPages" [routerLink]="page.path">
+            <div class="page-link__icon">
+              <app-icon [name]="page.icon" [size]="20" />
+            </div>
+            <div class="page-link__content">
+              <strong>{{ page.title }}</strong>
+              <p>{{ page.description }}</p>
+            </div>
+            <span class="page-link__action">{{ page.cta }}</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="section-band">
         <div class="summary-panel card">
           <div class="section-heading section-heading--compact">
             <span class="eyebrow">القيمة النهائية</span>
@@ -178,8 +182,8 @@ import { IconComponent } from '../../../shared/components';
   styles: [
     `
       .landing-shell {
-        min-height: 100vh;
-        padding: 1.25rem;
+        display: grid;
+        gap: 1.5rem;
       }
 
       .landing-hero {
@@ -195,37 +199,6 @@ import { IconComponent } from '../../../shared/components';
         box-shadow: 0 32px 90px rgba(15, 23, 42, 0.08);
       }
 
-      .landing-topbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-        margin-bottom: 2rem;
-      }
-
-      .brand-mark {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.9rem;
-      }
-
-      .brand-mark__icon {
-        width: 3.5rem;
-        height: auto;
-        flex: 0 0 auto;
-      }
-
-      .brand-mark strong {
-        display: block;
-        color: var(--color-display);
-      }
-
-      .brand-mark p {
-        margin: 0.2rem 0 0;
-        color: var(--color-secondary-paragraph);
-      }
-
-      .landing-topbar__actions,
       .hero-actions,
       .summary-actions {
         display: flex;
@@ -318,6 +291,7 @@ import { IconComponent } from '../../../shared/components';
       .signal-grid,
       .goals-grid,
       .roles-grid,
+      .page-links,
       .summary-grid {
         display: grid;
         gap: 1rem;
@@ -330,6 +304,7 @@ import { IconComponent } from '../../../shared/components';
       .signal-card,
       .goal-card,
       .role-card,
+      .page-link,
       .summary-metric {
         padding: 1rem;
         border-radius: 22px;
@@ -368,6 +343,7 @@ import { IconComponent } from '../../../shared/components';
       .signal-card strong,
       .goal-card strong,
       .role-card strong,
+      .page-link strong,
       .executive-point strong,
       .sequence-step__content strong,
       .summary-metric strong {
@@ -377,6 +353,7 @@ import { IconComponent } from '../../../shared/components';
       .signal-card p,
       .goal-card p,
       .role-card p,
+      .page-link p,
       .executive-point p,
       .sequence-step__content p,
       .summary-metric p {
@@ -532,6 +509,40 @@ import { IconComponent } from '../../../shared/components';
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }
 
+      .page-links {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .page-link {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 0.9rem;
+        align-items: center;
+        box-shadow: 0 18px 48px rgba(24, 39, 75, 0.05);
+      }
+
+      .page-link__icon {
+        width: 2.6rem;
+        height: 2.6rem;
+        border-radius: 0.95rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(15, 76, 129, 0.08);
+        color: var(--color-secondary-default);
+      }
+
+      .page-link__content strong {
+        display: block;
+        margin-bottom: 0.3rem;
+      }
+
+      .page-link__action {
+        color: var(--color-primary-default);
+        font-size: 0.9rem;
+        font-weight: 700;
+      }
+
       .role-card {
         box-shadow: 0 18px 48px rgba(24, 39, 75, 0.05);
       }
@@ -570,6 +581,7 @@ import { IconComponent } from '../../../shared/components';
         .signal-grid,
         .goals-grid,
         .roles-grid,
+        .page-links,
         .summary-grid {
           grid-template-columns: 1fr;
         }
@@ -589,7 +601,7 @@ import { IconComponent } from '../../../shared/components';
 
       @media (max-width: 720px) {
         .landing-shell {
-          padding: 0.85rem;
+          gap: 1rem;
         }
 
         .landing-hero,
@@ -598,8 +610,6 @@ import { IconComponent } from '../../../shared/components';
           padding: 1rem;
         }
 
-        .landing-topbar,
-        .landing-topbar__actions,
         .hero-actions,
         .summary-actions,
         .sequence-step {
@@ -612,7 +622,6 @@ import { IconComponent } from '../../../shared/components';
         }
 
         .btn,
-        .landing-topbar__actions .btn,
         .hero-actions .btn,
         .summary-actions .btn {
           width: 100%;
@@ -742,6 +751,22 @@ export class LandingComponent {
     { value: '3', label: 'أدوار رئيسية', hint: 'موظف، مدير، إدارة/موارد بشرية' },
     { value: '1', label: 'مسار موحد', hint: 'التكليف والتعلم والقياس في مكان واحد' },
     { value: '2', label: 'نقطتا قياس', hint: 'قبل التدريب وبعده لكل مؤشر مستهدف' },
+  ];
+  protected readonly publicPages = [
+    {
+      icon: 'eye',
+      title: 'عن بُناة',
+      description: 'صفحة ثابتة تشرح فكرة المنصة، مرتكزاتها، وكيف توزّع القيمة بين الأدوار المختلفة.',
+      cta: 'اذهب إلى النبذة',
+      path: '/about',
+    },
+    {
+      icon: 'calendar',
+      title: 'التحديثات',
+      description: 'ملخص سريع لما يغطيه الإصدار الحالي وما الذي نركز عليه في التطوير القادم.',
+      cta: 'شاهد التحديثات',
+      path: '/updates',
+    },
   ];
 
   protected goToLogin() {

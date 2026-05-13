@@ -49,6 +49,7 @@ This is the current implemented scope, not the older simplified brief:
 - JWT authentication
 - Role-based Angular routing and role-aware dashboards
 - Public landing page at `/home`
+- Public static pages at `/about` and `/updates`
 - Employee workspace
 - Manager workspace
 - Admin/HR workspace

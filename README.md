@@ -131,6 +131,9 @@ Available users:
 
 ## Main frontend routes
 
+- `/home`
+- `/about`
+- `/updates`
 - `/login`
 - `/employee/dashboard`
 - `/employee/courses`

@@ -2,23 +2,39 @@ import { Routes } from '@angular/router';
 
 import { authGuard } from './core/guards/auth.guard';
 import { roleGuard } from './core/guards/role.guard';
+import { PublicShellComponent } from './features/auth/components/public-shell.component';
 import { AppShellComponent } from './shared/components/app-shell.component';
 
 export const appRoutes: Routes = [
   {
+    path: '',
+    component: PublicShellComponent,
+    children: [
+      {
+        path: 'home',
+        loadComponent: () =>
+          import('./features/auth/pages/landing.component').then((m) => m.LandingComponent),
+      },
+      {
+        path: 'about',
+        loadComponent: () => import('./features/auth/pages/about.component').then((m) => m.AboutComponent),
+      },
+      {
+        path: 'updates',
+        loadComponent: () =>
+          import('./features/auth/pages/updates.component').then((m) => m.UpdatesComponent),
+      },
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: 'home',
+      },
+    ],
+  },
+  {
     path: 'login',
     loadComponent: () =>
       import('./features/auth/pages/login.component').then((m) => m.LoginComponent),
-  },
-  {
-    path: 'home',
-    loadComponent: () =>
-      import('./features/auth/pages/landing.component').then((m) => m.LandingComponent),
-  },
-  {
-    path: '',
-    pathMatch: 'full',
-    redirectTo: 'home',
   },
   {
     path: 'employee',
