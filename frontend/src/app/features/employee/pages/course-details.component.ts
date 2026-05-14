@@ -748,8 +748,10 @@ export class CourseDetailsComponent implements OnInit {
         const anchor = document.createElement('a');
         anchor.href = fileUrl;
         anchor.download = `bunat-certificate-${courseId}.pdf`;
+        document.body.append(anchor);
         anchor.click();
-        URL.revokeObjectURL(fileUrl);
+        anchor.remove();
+        window.setTimeout(() => URL.revokeObjectURL(fileUrl), 1000);
       });
   }
 

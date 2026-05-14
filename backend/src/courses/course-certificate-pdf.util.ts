@@ -1,6 +1,6 @@
 import { access, readFile } from 'fs/promises';
 
-import fontkit from '@pdf-lib/fontkit';
+import * as fontkit from '@pdf-lib/fontkit';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
 const FONT_CANDIDATES = [

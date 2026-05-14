@@ -1,5 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Res, UseGuards } from '@nestjs/common';
-import { Response } from 'express';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, StreamableFile, UseGuards } from '@nestjs/common';
 
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { Roles } from 'src/common/decorators/roles.decorator';
@@ -65,14 +64,12 @@ export class CoursesController {
     @Param('id') id: string,
     @CurrentUser() user: { id: string; role: UserRole },
     @Query('userId') targetUserId: string | undefined,
-    @Res({ passthrough: true }) response: Response,
   ) {
     const certificate = await this.coursesService.buildCertificatePdf(id, user, targetUserId);
-    response.setHeader('Content-Type', 'application/pdf');
-    response.setHeader(
-      'Content-Disposition',
-      `attachment; filename="bunat-certificate-${certificate.fileNameSuffix}.pdf"`,
-    );
-    return certificate.buffer;
+    return new StreamableFile(certificate.buffer, {
+      type: 'application/pdf',
+      disposition: `attachment; filename="bunat-certificate-${certificate.fileNameSuffix}.pdf"`,
+      length: certificate.buffer.length,
+    });
   }
 }
